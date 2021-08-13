@@ -10,17 +10,21 @@ class Bacteria():
         # distributed randomly on creation of cell
         self.radius = BACT_PARAM[self.type]['radius']
         self.splitLength = np.random.normal( BACT_PARAM[self.type]['maxLength']
-                                    , 0.5* BACT_PARAM[self.type]['maxLength'] )
+                                    , 0.05* BACT_PARAM[self.type]['maxLength'] )
         self.comVel = comVel # center of mass velocity
         self.angVel = angVel # angular velocity
         self.forces = [] # list of forces on cell
         self.pnts   = [] # list of points at which the forces are applied
+        self.wall   = 0.0 # whether it is touching the wall
         self.center_length()
 
     def center_length(self):
         # automatically sets length and center of cell
         self.center = (self.p1 + self.p2)/2.0
         self.length = np.linalg.norm(self.p1-self.p2)
+
+    def touches_wall(self):
+        self.wall = 1.0
 
     def out( self, env ):
         # return True if it's out of the simualtion
@@ -62,9 +66,10 @@ class Bacteria():
         # w = (vxr)/r^2
         newAngVel3d = np.cross( vecNewCom2newp13d, newp1relVelnewCom3d )\
                                     / ( np.linalg.norm(vecNewCom2newp13d)**2 )
+
         return newComVel3d[1:], newAngVel3d[0]
 
-    def split(self, variability=0.05):
+    def split(self, variability=0.02):
         """
         Over a certain length, the cell will split into 2 cells. This splitting
         will be almost in half, however added a bit of noise so that it's not
@@ -74,15 +79,17 @@ class Bacteria():
             variability : variability in where the center can be, distributed
         """
         # Where the split happens
-        splitPnt = self.p1 + (self.p2 - self.p1)*np.normal(0.5,0.05)
+        splitPnt = self.p1 + (self.p2 - self.p1)*np.random.normal(1./2.
+                                                                , variability)
 
         # daughter parameters. p2 from parent becomes p2 for daughter
         idDaughter = self.id + '1'
         p2toSplit = splitPnt - self.p2; p2toSplitNorm = np.linalg.norm(p2toSplit)
         p1Daughter = self.p2 + (( p2toSplitNorm - self.radius )* p2toSplit
                                                         / p2toSplitNorm )
-        comVelDaugher, angVelDaughter = self.splitting_velocities(p1Daughter
+        comVelDaughter, angVelDaughter = self.splitting_velocities(p1Daughter
                                                             , np.copy(self.p2))
+        p2Daughter = np.copy(self.p2)
 
         # p1 from parent stay, have to calculate new p2
         p1toSplit = splitPnt - self.p1; p1toSplitNorm = np.linalg.norm(p1toSplit)
@@ -97,9 +104,9 @@ class Bacteria():
         self.center_length()
 
         # daughter parameters
-        return {'type' : np.copy(self.type), 'id' : idDaughter
+        return {'type' : int(np.copy(self.type)), 'id' : idDaughter
                                 , 'p1' : p1Daughter
-                                , 'p2' : np.copy(self.p2)
+                                , 'p2' : p2Daughter
                                 , 'comVel' : comVelDaughter
                                 , 'angVel' : angVelDaughter
                                 }
@@ -115,9 +122,12 @@ class Bacteria():
         """
         newLength = ( self.length
                         * np.exp( BACT_PARAM[self.type]['growthRate']*dt) )
+        # if length larger than split length, splits into mother/daughter pair
         if newLength > self.splitLength:
             dictDaughter = self.split()
             env.add_cell(dictDaughter)
+            print('split!')
+        # else grows from the center outwards
         else:
             self.p1 = self.center + (self.p1 - self.center)*newLength / self.length
             self.p2 = self.center + (self.p2 - self.center)*newLength / self.length
@@ -125,7 +135,7 @@ class Bacteria():
 
     def add_force(self, force, pnt):
         """
-        Adding a the force to the list of forces
+        Adding a force to the list of forces
 
         Input
             force   : force to be added
@@ -144,31 +154,34 @@ class Bacteria():
             dt      : time interval
             env     : environment the cell is in
         """
-        # Forces on CoM
-        massReduced = ( ( 2*self.length ) / (np.pi * self.radius )+1)
-        acceleation = (sum(self.forces) - env.beta * self.wall * self.comVel)\
-                                / massReduced
-        self.comVel += dt * acceleration
-        disp = dt * self.comVel
+        if self.forces != []:
+            # Forces on CoM
+            # mass of spheres M = A * m where A = massReduced
+            massReduced = ( ( 2*self.length ) / (np.pi * self.radius ) + 1 )
+            # sum of forces =
+            acceleration = (sum(self.forces) - env.beta * self.wall * self.comVel)\
+                                    / massReduced
+            self.comVel += dt * acceleration
+            disp = dt * self.comVel
 
-        # Torque CoM
-        inertia = 5
-        radialVec = self.pnts - self.center
-        torqueAcc =  np.sum(np.cross(self.radialVec,self.forces))/ inertia
-        self.angVel += dt * torqueAcc
-        angVelVec = np.array()
+            # Torque CoM
+            inertia = 5
+            radialVec = self.pnts - self.center
+            torqueAcc =  np.sum(np.cross(radialVec, self.forces))/ inertia
+            self.angVel += dt * torqueAcc
 
-        # mouvement
-        angVel3d = np.pad(np.array([self.angVel])
-                            , [(0, 2)], mode='constant', constant_values=0)
-        self.p1 += disp + dt * (np.cross(angVel3d, np.pad( self.p1 - self.center
-                                                    ,  [(1, 0)], mode='constant'
-                                                    , constant_values=0)))[1:]
-        self.p2 += disp + dt * (np.cross(angVel3d, np.pad( self.p2 - self.center
-                                                    ,  [(1, 0)], mode='constant'
-                                                    , constant_values=0)))[1:]
-        self.center += disp
+            # rotating the cell by an angle
+            dtheta = self.angVel * dt
+            rotationMatrix = np.array( [ [np.cos(dtheta), -np.sin(dtheta) ]
+                                        ,[np.sin(dtheta), np.cos(dtheta) ] ] )
 
-        self.wall = 0; self.forces = []; self.pnts = []
+            dispP1 = rotationMatrix.dot( self.p1 - self.center )
+            dispP2 = rotationMatrix.dot( self.p2 - self.center )
+
+            # displacements
+            self.center += disp
+            self.p1 = self.center + dispP1; self.p2 = self.center + dispP2
+            self.center_length()
+            self.wall = 0.0; self.forces = []; self.pnts = []
 
         self.grow(dt, env)

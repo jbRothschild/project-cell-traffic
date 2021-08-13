@@ -12,7 +12,7 @@ class MasterEquation(N0=1000,N=1000):
     def rates(self):
         return 0
 
-    def rate_rcn_left(self, i):
+    def rate_fcn_left(self, i):
 
         return 0
 
@@ -57,7 +57,7 @@ class MasterEquation(N0=1000,N=1000):
     def inverse(self):
         # Pick one of many ways to do this
         inverseMbRemoved = np.linalg.inv(MbAbsRemoved)
-        inverseMbRemoved = spInv(MbAbsRemoved)
+        inverseMbRemoved = sp.Inv(MbAbsRemoved)
         inverseMbRemoved = sp.linalg.inv(MbAbsRemoved)
 
         self.inverseMbRemoved = inverseMbRemoved

@@ -1,8 +1,12 @@
-import sys
+import sys, os
 import numpy as np
 from src.agent import Bacteria
 from src.default import BACT_PARAM, BACT_PLOT
+from src.plotting import gif_experiment
 import matplotlib.pyplot as plt
+import warnings
+
+warnings.filterwarnings('error')
 
 def ccw(A,B,C):
     # check if these points are listed in counterclockwise order
@@ -42,7 +46,7 @@ def pnt2line(pnt, start, end):
     return dist, pnt, nearest
 
 class BiDirMM():
-    def __init__( self, height, width ):
+    def __init__( self, height, width, expDir, gridSize ):
         """
         Biomechanical ordering of dense cell populations, Tsimring et al.
         """
@@ -50,12 +54,27 @@ class BiDirMM():
         self.width = width # width of bidirectional mother machine
         self.bacteriaLst = [] # all the bacteria in the list
         self.beta = 0.8
-        self.mass = 1.0
+        self.mass = 1E0
         #self.kn = 2.0 * 10**6 * 98.1 # Something like what they have
-        self.kn = 2.2 * 10**2  # 10**7 N m**(-3/2) -> kg /( um min ** 2 )
+        self.kn = 333.0 # 10**6 N m**(-3/2) -> kg /( um min ** 2 ) # 0
         self.kt = 0.0 # weird
-        self.gamman = 2.2 * 10**2
-        self.gammat = 2.2 * 10**2
+        self.gamman = 2.2 * 1E-3 #-4
+        self.gammat = 2.2 * 1E-3 #-4
+        self.damping = 0.8
+        self.expDir = expDir
+        self.gridSize = gridSize
+
+        self.nbrHorizontalBins = int( - (self.width // -self.gridSize) + 2 )
+        self.nbrVerticalBins = int( - (self.height // -self.gridSize) + 2 )
+        self.grid = [ [ [] for _ in range(self.nbrHorizontalBins) ]
+                                        for _ in range(self.nbrVerticalBins) ]
+        #self.beta = 0.8
+        #self.mass = 1.0
+        #self.kn = 2.2 * 10**2  # 10**7 N m**(-3/2) -> kg /( um min ** 2 )
+        #self.kt = 0.0 # weird
+        #self.gamman = 2.2 * 10**2
+        #self.gammat = 2.2 * 10**2
+        #self.damping = 2.0
 
     def setup_initial_nbr_cells( self, speciesLst ):
         """
@@ -72,7 +91,7 @@ class BiDirMM():
                 p1 = np.array([np.random.uniform(0.0+maxLen, self.width-maxLen)
                         ,np.random.uniform(0.0+maxLen, self.height-maxLen)])
                 # direction of the bacteria
-                vec = np.random.rand(2); vec /= np.linalg.norm(vec)
+                vec = np.random.uniform(-1.0,1.0,2); vec /= np.linalg.norm(vec)
                 # set 2nd extermity
                 p2 = p1 + ( maxLen * np.random.uniform(0.5,1.0) * vec )
                 # create bacteria
@@ -85,7 +104,7 @@ class BiDirMM():
 
     def place_init_cells( self ):
         """
-        Place the initial cells
+        Place the initial cells horizontally
         """
         # cell 1
         # set the extremities in the box
@@ -107,10 +126,88 @@ class BiDirMM():
         # add bacteria to simulation
         (self.bacteriaLst).append(bacteria)
 
+    def place_init_cells2( self ):
+        """
+        Place the initial cells horizontally
+        """
+        # cell 1
+        # set the extremities in the box
+        p1 = np.array([20., 6.0]); p2 = p1 + np.array([3.0,0.0]); id=0
+        # create bacteria
+        bactDict = {'type' : 0, 'id' : str(id), 'p1' : p1
+                        , 'p2' : p2 }
+        bacteria = Bacteria(**bactDict)
+        # add bacteria to simulation
+        (self.bacteriaLst).append(bacteria)
 
+        # cell 2
+        # set the extremities in the box
+        p2 = np.array([22, 8.0]); p1 = p2 + np.array([3.0,0.0]); id=1
+        # create bacteria
+        bactDict = {'type' : 1, 'id' : str(id), 'p1' : p1
+                        , 'p2' : p2 }
+        bacteria = Bacteria(**bactDict)
+        # add bacteria to simulation
+        (self.bacteriaLst).append(bacteria)
 
     def add_cell(self, cellDict):
         (self.bacteriaLst).append(Bacteria(**cellDict))
+
+    def place_cell_grid(self, cell):
+        """
+        Placing cells in their respective bin in the grid
+        """
+        i = int( -(cell.center[1] // - self.gridSize) )
+        j = int( -(cell.center[0] // - self.gridSize) )
+        (self.grid[i][j]).append( cell )
+
+        return 0
+
+    def isIntersect(self, cell1, cell2):
+        def onLine(line, p): # is point p on line segment or not
+            lP1 = line.p1; lP2 = line.p2;
+            if ( ( p[0]<=max([lP1[0],lP2[0]]) and p[0]>=min([lP1[0],lP2[0]]) )
+             and ( p[1]<=max([lP1[1],lP2[1]]) and p[1]>=min([lP1[1],lP2[1]]) ) ):
+                return True
+            return False
+
+        def direction(A, B, C): # check direction of point orientations
+            val = float( B[1]-A[1] )*float( C[0]-B[0] ) - float( B[0]-A[0] )*float( C[1]-B[1] )
+            if ( np.abs(val) == 0.0 ): return 0   # colinear, machine precision needs some buffer
+            elif (val < 0.0 ): return 2  # anti-clockwise
+            return 1                # clockwise
+
+        def print_direction(A, B, C): # check direction of point orientations, just error checking
+            val = float( B[1]-A[1] )*( C[0]-B[0] ) - float( B[0]-A[0] )*( C[1]-B[1] )
+            print(val)
+            return 0
+
+        dir1 = direction(cell1.p1, cell1.p2, cell2.p1)
+        dir2 = direction(cell1.p1, cell1.p2, cell2.p2)
+        dir3 = direction(cell2.p1, cell2.p2, cell1.p1)
+        dir4 = direction(cell2.p1, cell2.p2, cell1.p2)
+
+        # If parallel, they most likely are mother/daughter pair, need to ignore
+        vecCell1 = (cell1.p1-cell1.p2)/np.linalg.norm(cell1.p1-cell1.p2);
+        vecCell2 = (cell2.p1-cell2.p2)/np.linalg.norm(cell2.p1-cell2.p2);
+        parallel = np.abs(np.dot(vecCell1, vecCell2))
+
+        if (( parallel < 0.99 ) and ( (dir1 != dir2) and (dir3 != dir4) )):
+            return True # intersecting
+
+        if ( dir1 == 0 and onLine(cell1, cell2.p1 ) ):
+            return True # cell2.p1 on cell1
+
+        if ( dir2 == 0 and onLine(cell1, cell2.p2 ) ):
+            return True # cell2.p2 on cell1
+
+        if ( dir3 == 0 and onLine(cell2, cell1.p1 ) ):
+            return True # cell1.p1 on cell2
+
+        if ( dir4 == 0 and onLine(cell2, cell1.p2 ) ):
+            return True # cell1.p1 on cell2
+
+        return False
 
     def closest_points_linesegments( self, cell1, cell2 ):
         """
@@ -127,11 +224,28 @@ class BiDirMM():
             pntO    : point on cell2
         """
         # checks if they intersect, if so problem!
-        if ( ccw(cell1.p1, cell2.p1, cell2.p2) != ccw(cell1.p2, cell2.p1, cell2.p2)
-            and ccw(cell1.p1, cell1.p2, cell2.p1) != ccw(cell1.p1, cell1.p2, cell1.p2)):
-            sys.exit("Warning: Cells " + cell1.id + " and " + cell2.id + " intersect!")
+        #if ( ccw(cell1.p1, cell2.p1, cell2.p2) != ccw(cell1.p2, cell2.p1, cell2.p2)
+        #    and ccw(cell1.p1, cell1.p2, cell2.p1) != ccw(cell1.p1, cell1.p2, cell1.p2)):
+        #    self.plot_bacteria(self.expDir + os.sep + 'overlapping-cells.png',True)
+        #    sys.exit("Warning: Cells " + cell1.id + " and " + cell2.id + " intersect!")
 
-        # find shortest distance between the two cells
+        # TODO: Check time speedup without this filter.
+        """
+        if self.isIntersect(cell1, cell2):
+            print([ cell.id for cell in self.bacteriaLst ])
+            gif_experiment(self.expDir)
+            plt.figure()
+            plt.plot([cell1.p1[0],cell1.p2[0]],[cell1.p1[1],cell1.p2[1]],'r')
+            plt.plot([cell2.p1[0],cell2.p2[0]],[cell2.p1[1],cell2.p2[1]],'b')
+            plt.scatter(x=cell1.p1[0], y=cell1.p1[1], c='r', marker='*', s=200)
+            plt.scatter(x=cell1.p2[0], y=cell1.p2[1], c='g', marker='*', s=200)
+            plt.scatter(x=cell2.p1[0], y=cell2.p1[1], c='b')
+            plt.scatter(x=cell2.p2[0], y=cell2.p2[1], c='k')
+            plt.show()
+            sys.exit("Warning: Cells " + cell1.id + " and " + cell2.id + " intersect!")
+        """
+
+        # find shortest distance between the two cells,
         dist = np.zeros(4); pnt = np.zeros((4,2)); linepnt = np.zeros((4,2))
 
         dist[0], pnt[0,:], linepnt[0,:] = pnt2line(cell1.p1, cell2.p1, cell2.p2)
@@ -157,7 +271,7 @@ class BiDirMM():
         gamma_t = self.gammat
         force = np.array([0.0,0.0])
         mu_cc = 0.1
-        delta = dist - (cell.radius + othercell.radius)/2.
+        delta = (cell.radius + othercell.radius) - dist
         n_ij = (cellPnt-othercellPnt)/np.linalg.norm(cellPnt-othercellPnt)
         v_ij = ( ( cell.comVel + cell.angVel*np.array([cellPnt[1],-cellPnt[0]] )
                     ) - ( othercell.comVel + othercell.angVel *
@@ -165,6 +279,7 @@ class BiDirMM():
         v_n = np.dot(v_ij, n_ij)
         # calculate force
         F_n = k_n * delta**(3./2.) - gamma_n * M_e * delta * v_n
+
         v_t = v_ij - v_n * n_ij
         if np.linalg.norm(v_t) != 0.0:
             t_ij = v_t/np.linalg.norm(v_t)
@@ -192,12 +307,19 @@ class BiDirMM():
         force = np.array([0.0,0.0])
         mu_cw = 0.8
 
-        delta = np.abs(cellPnt[1] - wallPnt) - (cell.radius)
-        n_ij = (cellPnt - np.array([cellPnt[0],wallPnt]))/(cellPnt[1] - wallPnt)
+        delta = cell.radius - np.abs(cellPnt[1] - wallPnt)
+        n_ij = (cellPnt - np.array([cellPnt[0],wallPnt]))/np.abs(cellPnt[1] - wallPnt)
         v_ij = ( cell.comVel + cell.angVel*np.array([cellPnt[1],-cellPnt[0]] ))
         v_n = np.dot(v_ij, n_ij)
         # calculate force
-        F_n = k_n * delta**(3./2.) - gamma_n * M_e * delta * v_n
+        try:
+            F_n = k_n * delta**(3./2.) - gamma_n * M_e * delta * v_n
+        except Warning:
+            print(cell.p1, cell.p2, wallPnt, delta)
+            gif_experiment(self.expDir)
+            self.plot_bacteria()
+            sys.exit(1)
+
         v_t = v_ij - v_n * n_ij
         if np.linalg.norm(v_t) != 0.0:
             t_ij = v_t/np.linalg.norm(v_t)
@@ -210,36 +332,59 @@ class BiDirMM():
 
         cell.add_force(force, cellPnt)
 
-        # set to true that it touches a wall
-        cell.touches_wall()
-
     def step( self, dt ):
 
-        # each cell needs to check interaction between it and all other cells
-        # TODO : Must be a better way to do this.
-        for i, cell in enumerate(self.bacteriaLst):
-            # Check if cells touch other cell, if true do cell2cell_force()
-            for othercell in self.bacteriaLst[i+1:]:
-                dist, cellPnt, othercellPnt =\
-                            self.closest_points_linesegments( cell, othercell )
-                if dist <= cell.radius + othercell.radius:
-                    self.cell2cell_force(cell, othercell, cellPnt, othercellPnt, dist)
-            if cell.p1[1]-cell.radius < 0.0:
-                self.cell2wall_force(cell, 'p1', 0.0)
-            elif cell.p1[1]+cell.radius > self.height:
-                self.cell2wall_force(cell, 'p1', self.height)
-            else:
-                pass
-            if cell.p2[1]-cell.radius < 0.0:
-                self.cell2wall_force(cell, 'p2', 0.0)
-            elif cell.p2[1]+cell.radius > self.height:
-                self.cell2wall_force(cell, 'p2', self.height)
-            else:
-                pass
+        # placing cells on the grid
+        for cell in self.bacteriaLst:
+            self.place_cell_grid( cell )
+        # cells only check cells in bins adjacent to it's own bin
+        for i in range(1, self.nbrVerticalBins): # could parallelize this?
+            for j in range(1, self.nbrHorizontalBins):
+                #r=0
+                while self.grid[i][j]: # while there are cells in the grid
+                    cell = self.grid[i][j][0]
+                    (self.grid[i][j]).pop(0) #\so while loop halts eventually
+                    vecCell = cell.p1 - cell.p2
+                    # Filter 1 : bins close by
+                    for aroundVertical in [1,0,-1]:
+                        for aroundHorizontal in [1,0,-1]:
+                            for othercell in self.grid[i+aroundVertical][j+aroundHorizontal]: # for filter 1
+                                # Filter 2 : cell centers within distance of eachother
+                                vecCellCenters = cell.center - othercell.center
+                                r_ij = np.linalg.norm( vecCellCenters )
+                                centerSep =  ( (cell.length + othercell.length)/2.0
+                                                + cell.radius + othercell.radius)
+                                if r_ij <= centerSep: # if filter 2
+                                    # Filter 3 : Check minimal distance between cells
+                                    vecCell = cell.p1 - cell.p2
+                                    vecOtherCell = othercell.p1 - othercell.p2
+                                    projCell = np.linalg.norm( np.dot(vecCell, vecCellCenters)/(2*r_ij) )
+                                    projOtherCell = np.linalg.norm( np.dot(vecOtherCell,
+                                                            vecCellCenters)/(2*r_ij) )
+                                    r_min = centerSep - ( projCell + projOtherCell )
+                                    if r_min <= cell.radius + othercell.radius: # if filter 3
+                                        # check forces
+                                        dist, cellPnt, othercellPnt =\
+                                                self.closest_points_linesegments( cell, othercell )
+                                        self.cell2cell_force(cell, othercell, cellPnt, othercellPnt, dist)
+                    # cell-wall interaction
+                    if i == 1:
+                        if cell.p1[1] - cell.radius < 0.0:
+                            self.cell2wall_force(cell, 'p1', 0.0)
+                        if cell.p2[1] - cell.radius < 0.0:
+                            self.cell2wall_force(cell, 'p2', 0.0)
+                    if i == self.nbrVerticalBins:
+                        if cell.p2[1] + cell.radius > self.height:
+                            self.cell2wall_force(cell, 'p2', self.height)
+                        if cell.p1[1] + cell.radius > self.height:
+                            self.cell2wall_force(cell, 'p1', self.height)
 
         for i, cell in enumerate(self.bacteriaLst):
-            #cell.add_force(np.array([1000,0]),cell.p1)
             cell.integrate_forces(dt, self)
+
+        # mustn't keep growing... create tmp list that's added after the fact
+        for i, cell in enumerate(self.bacteriaLst):
+            cell.grow(dt, self)
 
         self.bacteriaLst = [x for x in self.bacteriaLst if not x.out(self)]
 
@@ -259,11 +404,15 @@ class BiDirMM():
         fig = plt.figure(figsize=(self.width/2.,self.height/2.))
         for bacteria in self.bacteriaLst:
             plt.plot([bacteria.p1[0],bacteria.p2[0]],[bacteria.p1[1],bacteria.p2[1]]
-                                                ,lw=30
+                                                ,lw=25
                                                 , solid_capstyle='round'
                                                 , color=BACT_PLOT[bacteria.type])
         plt.ylim([0,self.height])
         plt.xlim([0,self.width])
+
+        #plt.ylim([-2*self.height,2*self.height])
+        #plt.xlim([-2*self.width,2*self.width])
+
         plt.tick_params(
                 axis='x',          # changes apply to the x-axis
                 which='both',      # both major and minor ticks are affected

@@ -36,3 +36,8 @@ def gif_experiment(dir, modulus=1, fileExt=r'.png'):
                 image = imageio.imread(dir + os.sep + filename)
                 writer.append_data(image)
     return 0
+
+if __name__ == '__main__':
+    simNbr = 1
+    simDir = os.getcwd() + os.sep + 'data' + os.sep + f'exp_nbr_{simNbr}'
+    gif_experiment(simDir)

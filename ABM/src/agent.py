@@ -15,16 +15,12 @@ class Bacteria():
         self.angVel = angVel # angular velocity
         self.forces = [] # list of forces on cell
         self.pnts   = [] # list of points at which the forces are applied
-        self.wall   = 0.0 # whether it is touching the wall
         self.center_length()
 
     def center_length(self):
         # automatically sets length and center of cell
         self.center = (self.p1 + self.p2)/2.0
         self.length = np.linalg.norm(self.p1-self.p2)
-
-    def touches_wall(self):
-        self.wall = 1.0
 
     def out( self, env ):
         # return True if it's out of the simualtion
@@ -126,11 +122,11 @@ class Bacteria():
         if newLength > self.splitLength:
             dictDaughter = self.split()
             env.add_cell(dictDaughter)
-            print('split!')
+            #print('split!')
         # else grows from the center outwards
         else:
-            self.p1 = self.center + (self.p1 - self.center)*newLength / self.length
-            self.p2 = self.center + (self.p2 - self.center)*newLength / self.length
+            self.p1 = self.center + (self.p1 - self.center) * newLength / self.length
+            self.p2 = self.center + (self.p2 - self.center) * newLength / self.length
             self.length = newLength
 
     def add_force(self, force, pnt):
@@ -141,7 +137,6 @@ class Bacteria():
             force   : force to be added
             pnt     : where the force is applied
         """
-
         # TODO : Create forces
         (self.forces).append(force)
         (self.pnts).append(pnt)
@@ -154,34 +149,30 @@ class Bacteria():
             dt      : time interval
             env     : environment the cell is in
         """
+        acceleration = 0.0; torqueAcc = 0.0
         if self.forces != []:
             # Forces on CoM
             # mass of spheres M = A * m where A = massReduced
             massReduced = ( ( 2*self.length ) / (np.pi * self.radius ) + 1 )
             # sum of forces =
-            acceleration = (sum(self.forces) - env.beta * self.wall * self.comVel)\
-                                    / massReduced
-            self.comVel += dt * acceleration
-            disp = dt * self.comVel
+            acceleration = sum(self.forces) / massReduced
 
             # Torque CoM
-            inertia = 5
+            inertia = 5 # m = 1
             radialVec = self.pnts - self.center
-            torqueAcc =  np.sum(np.cross(radialVec, self.forces))/ inertia
-            self.angVel += dt * torqueAcc
+            torqueAcc =  np.sum(np.cross(radialVec, self.forces)) / inertia
 
-            # rotating the cell by an angle
-            dtheta = self.angVel * dt
-            rotationMatrix = np.array( [ [np.cos(dtheta), -np.sin(dtheta) ]
-                                        ,[np.sin(dtheta), np.cos(dtheta) ] ] )
+        self.comVel += dt * ( acceleration  - env.damping * self.comVel)
+        self.angVel += dt * ( torqueAcc - env.damping * self.angVel)
+        
+        # rotating the cell by an angle
+        dtheta = self.angVel * dt
+        rotationMatrix = np.array( [ [np.cos(dtheta), -np.sin(dtheta) ]
+                                    ,[np.sin(dtheta), np.cos(dtheta) ] ] )
 
-            dispP1 = rotationMatrix.dot( self.p1 - self.center )
-            dispP2 = rotationMatrix.dot( self.p2 - self.center )
-
-            # displacements
-            self.center += disp
-            self.p1 = self.center + dispP1; self.p2 = self.center + dispP2
-            self.center_length()
-            self.wall = 0.0; self.forces = []; self.pnts = []
-
-        self.grow(dt, env)
+        # displacements
+        self.center += dt * self.comVel
+        self.p1 = self.center + rotationMatrix.dot( self.p1 - self.center )
+        self.p2 = self.center + rotationMatrix.dot( self.p2 - self.center )
+        self.center_length()
+        self.forces = []; self.pnts = []

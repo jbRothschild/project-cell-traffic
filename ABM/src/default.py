@@ -7,7 +7,8 @@ DATA_DIR = 'data'
 
 BACT_PARAM = { 0 : { 'growthRate' : 0.013, 'maxLength' : 4.0, 'radius' : 0.5 },
                 1 : { 'growthRate' : 0.013, 'maxLength' : 4.0 , 'radius' : 0.5},
-                2 : { 'growthRate' : 0.013, 'maxLength' : 4.0 , 'radius' : 0.5}
+                2 : { 'growthRate' : 0.013, 'maxLength' : 4.0 , 'radius' : 0.5},
+                3 : { 'growthRate' : 0.006, 'maxLength' : 8.0 , 'radius' : 0.5}
                 }
 
 BACT_PLOT = { 0 : 'r', 1 : 'g', 2: 'b'}

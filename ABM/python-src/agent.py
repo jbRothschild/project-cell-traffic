@@ -116,13 +116,13 @@ class Bacteria():
             dt      : time interval
             env     : environment the cell is in
         """
+
         newLength = ( self.length
                         * np.exp( BACT_PARAM[self.type]['growthRate']*dt) )
         # if length larger than split length, splits into mother/daughter pair
         if newLength > self.splitLength:
             dictDaughter = self.split()
             env.add_cell(dictDaughter)
-            #print('split!')
         # else grows from the center outwards
         else:
             self.p1 = self.center + (self.p1 - self.center) * newLength / self.length
@@ -164,7 +164,7 @@ class Bacteria():
 
         self.comVel += dt * ( acceleration  - env.damping * self.comVel)
         self.angVel += dt * ( torqueAcc - env.damping * self.angVel)
-        
+
         # rotating the cell by an angle
         dtheta = self.angVel * dt
         rotationMatrix = np.array( [ [np.cos(dtheta), -np.sin(dtheta) ]

@@ -5,8 +5,8 @@ import numpy as np
 from tqdm import tqdm
 
 # PARAMETERS
-initPop = [1,1] # initial population
-dt = 4E-5 # time step, minutes
+initPop = [1000] # initial population
+dt = 1E-4 # time step, minutes
 saveTime = 10.0 # every save timestep
 expNbr = 31 # experiment number
 expDir = default.DATA_DIR + os.sep + f'exp_nbr_{expNbr}' # experiment directory
@@ -18,7 +18,7 @@ gS = 4.0 # TODO change to max length of cells in simulation
 largeChannel = {'width' : 45.0, 'height' : 12.0, 'gridSize' : gS}
 smallChannel = {'width' : 45.0, 'height' : 6.0, 'gridSize' : gS}
 hugeChannel = {'width' : 100.0, 'height' : 100.0, 'gridSize' : gS}
-channel = smallChannel # which channel we're using
+channel = hugeChannel # which channel we're using
 sim = environment.BiDirMM(expDir=expDir, **channel)
 
 # initialize the population within
@@ -40,7 +40,6 @@ for i in tqdm(np.arange(0,T)):
         filenames.append(filename)
         sim.plot_bacteria(filename)
         j += 1
-
     sim.step(dt)
 
 #while len(sim.bacteriaLst) < np.sum(initPop):

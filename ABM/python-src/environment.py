@@ -315,7 +315,7 @@ class BiDirMM():
         try:
             F_n = k_n * delta**(3./2.) - gamma_n * M_e * delta * v_n
         except Warning:
-            print(cell.p1, cell.p2, wallPnt, delta)
+            print("cell overlaps wall",cell.p1, cell.p2, wallPnt, delta)
             gif_experiment(self.expDir)
             self.plot_bacteria()
             sys.exit(1)
@@ -335,9 +335,14 @@ class BiDirMM():
     def step( self, dt ):
 
         # placing cells on the grid
+        """
+        i=0
+
         for cell in self.bacteriaLst:
             self.place_cell_grid( cell )
+
         # cells only check cells in bins adjacent to it's own bin
+        count = 0
         for i in range(1, self.nbrVerticalBins): # could parallelize this?
             for j in range(1, self.nbrHorizontalBins):
                 #r=0
@@ -350,13 +355,13 @@ class BiDirMM():
                         for aroundHorizontal in [1,0,-1]:
                             for othercell in self.grid[i+aroundVertical][j+aroundHorizontal]: # for filter 1
                                 # Filter 2 : cell centers within distance of eachother
+
                                 vecCellCenters = cell.center - othercell.center
                                 r_ij = np.linalg.norm( vecCellCenters )
                                 centerSep =  ( (cell.length + othercell.length)/2.0
                                                 + cell.radius + othercell.radius)
                                 if r_ij <= centerSep: # if filter 2
                                     # Filter 3 : Check minimal distance between cells
-                                    vecCell = cell.p1 - cell.p2
                                     vecOtherCell = othercell.p1 - othercell.p2
                                     projCell = np.linalg.norm( np.dot(vecCell, vecCellCenters)/(2*r_ij) )
                                     projOtherCell = np.linalg.norm( np.dot(vecOtherCell,
@@ -364,10 +369,14 @@ class BiDirMM():
                                     r_min = centerSep - ( projCell + projOtherCell )
                                     if r_min <= cell.radius + othercell.radius: # if filter 3
                                         # check forces
+
                                         dist, cellPnt, othercellPnt =\
                                                 self.closest_points_linesegments( cell, othercell )
                                         self.cell2cell_force(cell, othercell, cellPnt, othercellPnt, dist)
+
+                                        pass
                     # cell-wall interaction
+
                     if i == 1:
                         if cell.p1[1] - cell.radius < 0.0:
                             self.cell2wall_force(cell, 'p1', 0.0)
@@ -379,14 +388,17 @@ class BiDirMM():
                         if cell.p1[1] + cell.radius > self.height:
                             self.cell2wall_force(cell, 'p1', self.height)
 
+
+
         for i, cell in enumerate(self.bacteriaLst):
             cell.integrate_forces(dt, self)
 
         # mustn't keep growing... create tmp list that's added after the fact
         for i, cell in enumerate(self.bacteriaLst):
             cell.grow(dt, self)
-
+    
         self.bacteriaLst = [x for x in self.bacteriaLst if not x.out(self)]
+        """
 
         return self.height, self.width, self.bacteriaLst
 

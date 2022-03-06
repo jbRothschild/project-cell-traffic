@@ -28,7 +28,7 @@ mt19937 generator(rd());
 mt19937 len_generator(rd());
 mt19937 ang_generator(rd());
 uniform_real_distribution<double> len_distribution(-0.025, 0.025);
-uniform_real_distribution<double> ang_distribution(-0.01 * PI , 0.01 * PI);
+uniform_real_distribution<double> ang_distribution(-0.005 * PI , 0.005 * PI);
 uniform_real_distribution<double> uni_length_distribution(-0.05, 0.05);
 
 template <typename T> int sgn(T val) {
@@ -183,8 +183,8 @@ class Environment
     double k_n = 4000000.0; // 3333
     double gamma_n = 0.0; // 0.00
     double gamma_t = 0.0; // 0.00
-    double damping_lin = 12000.0; // 2000
-    double damping_tor = 12000.0; // 8000 * PI
+    double damping_lin = 200.0 * 60; // 12000
+    double damping_tor = 200.0 * 60; // 8000 * PI
     double mu_cc = 0.1;
     double mu_cw = 0.8;
     bool split_bool= false;

@@ -177,10 +177,9 @@ class Environment
     double mu_cc = 0.1;
     double mu_cw = 0.8;
     */
-    double mass = 1.0 / 5.0;
+    double mass = 1.0; // 1/5
     double beta = 0.8;
-    double g = 1000.0 / 3.6;
-    double k_n = 4000000.0; // 3333
+    double k_n = 4000000.0; // 4000000.0
     double gamma_n = 0.0; // 0.00
     double gamma_t = 0.0; // 0.00
     double damping_lin = 200.0 * 60; // 12000
@@ -476,7 +475,7 @@ void ABMagent::split()
   label_daugh.append("1");
 
   // location of center of daughter cell and new location of cell
-  cout << "\n SPLITTING CELL -----------";
+  // cout << "\n SPLITTING CELL -----------";
   double x_prev = x;
   double y_prev = y;
   double rand_angle = ang_distribution(ang_generator);
@@ -512,9 +511,9 @@ void ABMagent::split()
 
   environment->move(this, x_prev, y_prev);
   environment->split_bool= true;
-  print();
-  daughter->print();
-  //int num_agent = environment->countNumberAgents();
+  //print(); // Information about the cell when split
+  //daughter->print();
+  //int num_agent = environment->countNumberAgents(); // number of cells after split
 };
 
 
@@ -576,16 +575,16 @@ void ABMagent::move(double dt, double damping_lin, double damping_tor)
   //double reduced_mass = ( 2.0 * (length - 2 * radius ) )
   //                      / ( ( PI * radius ) + 1.0 );
 
-  double reduced_mass = environment->mass * ( ( length - 2 * radius ) * 4
-                        / ( 2 * environment->mass * radius) + 1.0);
-  reduced_mass = 1.0;
-  double inertia_dt = reduced_mass * pow(length, 2.0) / 12.;
+  double reduced_mass = environment->mass * radius * ( 2.0 * ( length - 2 * radius )
+                        + ( PI * radius ) );
 
   // reposition cell and re-orient
   double x_prev = x;
   double y_prev = y;
   x += dt * force_x / ( reduced_mass * damping_lin * length );
   y += dt * force_y / ( reduced_mass * damping_lin * length );
+  // reduced_mass = 1.0;
+  double inertia_dt = reduced_mass * pow(length, 2.0) / 12.;
   angle += dt * torque / ( inertia_dt * damping_tor * length );
 
   // reset forces to zero for next round
@@ -974,7 +973,7 @@ int main (int argc, char* argv[]) {
   double dt = 0.000025; // in minutes
   double save_time = 5.0; // X minutes
   int num_sub_iter = save_time / dt;
-  int num_save_iter = 12 * 60 / ( num_sub_iter * dt );
+  int num_save_iter = 7 * 60 / ( num_sub_iter * dt );
   int num_agents = 0;
 
   string datafolder = "./data";

@@ -13,11 +13,6 @@
 #include <filesystem>
 
 #define PI 3.14159265359
-#define SPEED 0.005
-#define NAGENTS 20000
-#define XCHANNEL 45.0
-#define YCHANNEL 12.0
-#define MAXLENCELL 4.0
 
 using namespace std;
 
@@ -27,9 +22,16 @@ random_device rd;
 mt19937 generator(rd());
 mt19937 len_generator(rd());
 mt19937 ang_generator(rd());
+
+/*
 uniform_real_distribution<double> len_distribution(-0.025, 0.025);
 uniform_real_distribution<double> ang_distribution(-0.005 * PI , 0.005 * PI);
 uniform_real_distribution<double> uni_length_distribution(-0.05, 0.05);
+*/
+
+uniform_real_distribution<double> len_distribution(-0.025, 0.025);
+uniform_real_distribution<double> ang_distribution(-0.005 * PI , 0.005 * PI);
+uniform_real_distribution<double> uni_length_distribution(-0.0, 0.0);
 
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
@@ -188,8 +190,10 @@ class Environment
     double mu_cw = 0.8;
     bool split_bool= false;
     static constexpr double CELL_SIZE = 4.0;
+
     static constexpr double CHANNEL_WIDTH = 44.0;
     static constexpr double CHANNEL_HEIGHT = 12.0;
+
     static const int NUM_CELLS_WIDTH = 2 + ceil( CHANNEL_WIDTH / CELL_SIZE);
     static const int NUM_CELLS_HEIGHT = 2 + ceil( CHANNEL_HEIGHT / CELL_SIZE);
 
@@ -503,13 +507,14 @@ void ABMagent::split()
   force_y_prev = 0.0;
   torque_prev = 0.0;
 
+  environment->move(this, x_prev, y_prev);
+
   ABMagent* daughter = new ABMagent(environment, x_daugh, y_daugh, radius, max_length,
                                     length_daugh, vel_x_daugh, vel_y_daugh,
                                     acc_x, acc_y, angle_daugh,
                                     inertia, vel_angle_daugh, growth_rate, label_daugh,
                                     force_x_prev, force_y_prev, torque_prev);
 
-  environment->move(this, x_prev, y_prev);
   environment->split_bool= true;
   //print(); // Information about the cell when split
   //daughter->print();
@@ -523,67 +528,17 @@ void ABMagent::grow(double dt)
 };
 
 
-void ABMagent::move_old(double dt, double damping_lin, double damping_tor)
-{
-  //double reduced_mass = ( 2.0 * (length - 2 * radius ) )
-  //                      / ( ( PI * radius ) + 1.0 );
-  double reduced_mass = environment->mass * ( ( length - 2 * radius ) * 4
-                        / ( 2 * environment->mass * radius) + 1.0);
-  double inertia_dt = reduced_mass * pow(length, 2.0) / 12.;
-  double vel_x_prev = vel_x;
-  double vel_y_prev = vel_y;
-  double vel_angle_prev = vel_angle;
-  double acc_x_prev = acc_x;
-  double acc_y_prev = acc_y;
-  double acc_angle_prev = acc_angle;
-
-  // accelerations, implicit linear acceleration method
-  double A_1 = reduced_mass * ( 1.0 + dt * damping_lin / 2.0);
-  double A_2 = reduced_mass * ( 1.0 - dt * damping_lin / 2.0);
-  double A_3 = inertia_dt * ( 1.0 + dt * damping_tor / 2.0);
-  double A_4 = inertia_dt * ( 1.0 - dt * damping_tor / 2.0);
-  acc_x = ( A_2 * acc_x_prev + force_x - force_x_prev ) / A_1;
-  acc_y = ( A_2 * acc_y_prev + force_y - force_y_prev ) / A_1;
-  acc_angle = ( A_4 * acc_angle_prev + torque - torque_prev ) / A_3;
-
-  // velocities calculated with damping_lin
-  vel_x += dt * ( acc_x + acc_x_prev ) / 2.0;
-  vel_y += dt * ( acc_y + acc_y_prev ) / 2.0;
-  vel_angle += dt * ( acc_angle + acc_angle_prev ) / 2.0; //
-  //vel_angle = dt * ( torque / ( damping_lin * inertia ) );
-
-  // reposition cell and re-orient
-  double x_prev = x;
-  double y_prev = y;
-  x += dt * vel_x_prev + pow(dt, 2.0) * ( acc_x + 2.0 * acc_x_prev ) / 6.0;
-  y += dt * vel_y_prev + pow(dt, 2.0) * ( acc_y + 2.0 * acc_y_prev ) / 6.0;
-  angle += dt * vel_angle + pow(dt, 2.0) * ( acc_angle + 2.0 * acc_angle_prev ) / 6.0;
-
-  // reset forces to zero for next round
-  force_x_prev = force_x;
-  force_y_prev = force_y;
-  torque_prev = torque;
-  force_x = 0.0;
-  force_y = 0.0;
-  torque = 0.0;
-  environment->move(this, x_prev, y_prev);
-};
-
-
 void ABMagent::move(double dt, double damping_lin, double damping_tor)
 {
-  //double reduced_mass = ( 2.0 * (length - 2 * radius ) )
-  //                      / ( ( PI * radius ) + 1.0 );
-
   double reduced_mass = environment->mass * radius * ( 2.0 * ( length - 2 * radius )
                         + ( PI * radius ) );
+  reduced_mass = 1.0;
 
   // reposition cell and re-orient
   double x_prev = x;
   double y_prev = y;
   x += dt * force_x / ( reduced_mass * damping_lin * length );
   y += dt * force_y / ( reduced_mass * damping_lin * length );
-  // reduced_mass = 1.0;
   double inertia_dt = reduced_mass * pow(length, 2.0) / 12.;
   angle += dt * torque / ( inertia_dt * damping_tor * length );
 
@@ -640,6 +595,7 @@ void Environment::applyForceCell2Cell
   norm_force = k_n * pow(delta, 1.5) - gamma_n * M_e * delta * vel_norm;
 
   // Calculating tangential force
+  /*
   vel_tngt_x = vel_delta_x - vel_norm * normal_x;
   vel_tngt_y = vel_delta_y - vel_norm * normal_y;
   vel_tngt = sqrt( pow(vel_tngt_x, 2.0) + pow(vel_tngt_y, 2.0) );
@@ -651,9 +607,9 @@ void Environment::applyForceCell2Cell
     max_friction = mu_cc * norm_force;
     tngt_force = - min(max_friction, friction);
   }
-
-  ext_force_x = norm_force * normal_x + tngt_force * tngt_x;
-  ext_force_y = norm_force * normal_y + tngt_force * tngt_y;
+  */
+  ext_force_x = norm_force * normal_x; //+ tngt_force * tngt_x;
+  ext_force_y = norm_force * normal_y; //+ tngt_force * tngt_y;
 
   agent->addForce(point_agent_x, point_agent_y, ext_force_x, ext_force_y);
   other->addForce(point_other_x, point_other_y, -ext_force_x, -ext_force_y);
@@ -699,6 +655,7 @@ void Environment::applyForceCell2Wall
   norm_force = k_n * pow(delta, 1.5) - gamma_n * M_e * delta * vel_norm;
 
   // Calculating tangential force
+  /*
   vel_tngt_x = vel_delta_x - vel_norm * normal_x;
   vel_tngt_y = vel_delta_y - vel_norm * normal_y;
   vel_tngt = sqrt( pow(vel_tngt_x, 2.0) + pow(vel_tngt_y, 2.0) );
@@ -710,7 +667,7 @@ void Environment::applyForceCell2Wall
     max_friction = mu_cw * norm_force;
     tngt_force = - min(max_friction, friction);
   }
-
+  */
   ext_force_x = norm_force * normal_x + tngt_force * tngt_x;
   ext_force_y = norm_force * normal_y + tngt_force * tngt_y;
 
@@ -973,7 +930,7 @@ int main (int argc, char* argv[]) {
   double dt = 0.000025; // in minutes
   double save_time = 5.0; // X minutes
   int num_sub_iter = save_time / dt;
-  int num_save_iter = 7 * 60 / ( num_sub_iter * dt );
+  int num_save_iter = 3 * 60 / ( num_sub_iter * dt );
   int num_agents = 0;
 
   string datafolder = "./data";
@@ -1000,13 +957,23 @@ int main (int argc, char* argv[]) {
 
   ABMagent* newBacteriaPntr = new ABMagent(&enviro, 22.0, 6.0, radius,
                     max_length, length, 0.0, 0.0, 0.0, 0.0,
-                    0.0, inertia, 0.0, growth_rate, to_string(0),
+                    0.0, inertia, 0.0, 2*growth_rate, to_string(0),
                     0.0, 0.0, 0.0);
   ABMagent* newBacteriaPntr2 = new ABMagent(&enviro, 23.5, 5.5, radius,
                     max_length, length, 0.0, 0.0, 0.0, 0.0,
-                    PI/2.0, inertia, 0.0, growth_rate, to_string(1),
+                    PI/2.0, inertia, 0.0, 2*growth_rate, to_string(1),
                     0.0, 0.0, 0.0);
 
+  /*
+  ABMagent* newBacteriaPntr1 = new ABMagent(&enviro, 23.5, 5.5, radius,
+                    max_length, length, 0.0, 0.0, 0.0, 0.0,
+                    0.0, inertia, 0.0, 2*growth_rate, to_string(0),
+                    0.0, 0.0, 0.0);
+  ABMagent* newBacteriaPntr2 = new ABMagent(&enviro, 23.5, 4.75, radius,
+                    1.5*max_length, length, 0.0, 0.0, 0.0, 0.0,
+                    0.0, inertia, 0.0, 0.1*growth_rate, to_string(1),
+                    0.0, 0.0, 0.0);
+  */
   /*
   // reg
   ABMagent* newBacteriaPntr = new ABMagent(&enviro, 23.7014, 4.55602, radius,

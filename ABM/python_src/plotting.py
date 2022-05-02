@@ -27,6 +27,7 @@ def convert_line_2_bacteria(line):
     bacteria['vel_angle'] = float(values[12])
     bacteria['acc_x'] = float(values[13])
     bacteria['acc_y'] = float(values[14])
+    bacteria['daughter'] = int(values[0][-1])
 
     edge_length = bacteria['length'] / 2.0 - bacteria['radius']
     p1x = bacteria['x'] + edge_length * np.cos(bacteria['angle'])
@@ -70,12 +71,17 @@ def plot_simulation(exp_dir, sim_nbr):
         plt.xlim([0, width])
         while line != "\n":
             bacteria = convert_line_2_bacteria(line)
+
             plt.plot([bacteria['p1'][0], bacteria['p2'][0]], [bacteria['p1'][1],
-                     bacteria['p2'][1]], lw=26, solid_capstyle='round',
-                     color=BACT_COL[bacteria['label'][0]],
-                     path_effects=[pe.Stroke(linewidth=28, foreground='k'),
+                     bacteria['p2'][1]], lw=24, solid_capstyle='round',
+                     color=BACT_COL[bacteria['label'][0]], zorder=-1,
+                     path_effects=[pe.Stroke(linewidth=26, foreground='k'),
                                    pe.Normal()]
                      )
+
+            # if bacteria['daughter']:
+            # plt.scatter([bacteria['x']], [bacteria['y']], marker="o",
+            #            s=100, zorder=1, edgecolors="k")
 
             line = agents.readline()
         plt.tick_params(axis='x',          # changes apply to the x-axis

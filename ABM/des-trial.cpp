@@ -11,8 +11,6 @@
 #include <list>
 #include <vector>
 #include <filesystem>
-#include "intersect.hpp"
-#include "bacteria.hpp"
 
 #define PI 3.14159265359
 
@@ -29,6 +27,117 @@ mt19937 ang_generator(0);
 uniform_real_distribution<double> len_distribution(-0.025, 0.025);
 uniform_real_distribution<double> ang_distribution(-0.005 * PI , 0.005 * PI);
 uniform_real_distribution<double> uni_length_distribution(-0.0, 0.0);
+
+
+//////////////////////////////////////////////////////////////////// bacteria
+class EColi
+{
+  public:
+    double radius = 0.5;
+    double max_length = 4.0;
+    double inertia = 5.0;
+    double growth_rate = 0.013;
+    double length = 2.0;
+};
+
+class CBacillus
+{
+  public:
+    double radius = 0.5;
+    double max_length = 6.0;
+    double inertia = 5.0;
+    double growth_rate = 0.0065;
+    double length = 3.0;
+};
+
+class EColiAlt
+{
+  public:
+    double radius = 0.5;
+    double max_length = 2.5;
+    double inertia = 5.0;
+    double growth_rate = 0.0065;
+    double length = 1.25;
+};
+
+//////////////////////////////////////////////////////////////////// INTERSECT
+
+struct Point
+{
+	double x;
+	double y;
+};
+
+// Given three collinear points p, q, r, the function checks if
+// point q lies on line segment 'pr'
+bool onSegment(Point p, Point q, Point r)
+{
+	if (q.x <= max(p.x, r.x) && q.x >= min(p.x, r.x) &&
+		q.y <= max(p.y, r.y) && q.y >= min(p.y, r.y))
+	return true;
+
+	return false;
+}
+
+// To find orientation of ordered triplet (p, q, r).
+// The function returns following values
+// 0 --> p, q and r are collinear
+// 1 --> Clockwise
+// 2 --> Counterclockwise
+int orientation(Point p, Point q, Point r)
+{
+	// See https://www.geeksforgeeks.org/orientation-3-ordered-points/
+	// for details of below formula.
+	int val = (q.y - p.y) * (r.x - q.x) -
+			(q.x - p.x) * (r.y - q.y);
+
+	if (val == 0) return 0; // collinear
+
+	return (val > 0)? 1: 2; // clock or counterclock wise
+}
+
+// The main function that returns true if line segment 'p1q1'
+// and 'p2q2' intersect.
+bool doIntersect(Point p1, Point q1, Point p2, Point q2)
+{
+	// Find the four orientations needed for general and
+	// special cases
+	int o1 = orientation(p1, q1, p2);
+	int o2 = orientation(p1, q1, q2);
+	int o3 = orientation(p2, q2, p1);
+	int o4 = orientation(p2, q2, q1);
+
+	// General case
+	if (o1 != o2 && o3 != o4)
+		return true;
+
+	// Special Cases
+	// p1, q1 and p2 are collinear and p2 lies on segment p1q1
+	if (o1 == 0 && onSegment(p1, p2, q1)) return true;
+
+	// p1, q1 and q2 are collinear and q2 lies on segment p1q1
+	if (o2 == 0 && onSegment(p1, q2, q1)) return true;
+
+	// p2, q2 and p1 are collinear and p1 lies on segment p2q2
+	if (o3 == 0 && onSegment(p2, p1, q2)) return true;
+
+	// p2, q2 and q1 are collinear and q1 lies on segment p2q2
+	if (o4 == 0 && onSegment(p2, q1, q2)) return true;
+
+	return false; // Doesn't fall in any of the above cases
+}
+
+// Driver program to test above functions
+int pointsIntersect(double x1a, double x1b, double x2a, double x2b,
+				 double y1a, double y1b, double y2a, double y2b)
+{
+	struct Point p1 = {x1a, y1a}, q1 = {x1b, y1b};
+	struct Point p2 = {x2a, y2a}, q2 = {x2b, y2b};
+
+	return doIntersect(p1, q1, p2, q2);
+}
+
+////////////////////////////////////////////////////////////////////
 
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
@@ -895,8 +1004,8 @@ bool readDataFile (string fname, int layer) {
 */
 
 void initialize_cell(Environment enviro, int SIM_NUM, double length1,
-                     double length2, double &angle1, double &angle2,
-                     double &x1, double &x2, double &y1, double &y2) {
+                     double length2, double angle1, double angle2,
+                     double x1, double x2, double y1, double y2) {
 
   mt19937 cell_placement(SIM_NUM);
 
@@ -917,8 +1026,8 @@ void initialize_cell(Environment enviro, int SIM_NUM, double length1,
      x2 = x_dist(cell_placement);
 
      y1 = y1_dist(cell_placement);
-     y2 = y2_dist(cell_placement);
-     cout << "\n" << x1 << "\n"<< x2 << "\n"<< y1 << "\n"<< y2 << "\n";
+     y1 = y2_dist(cell_placement);
+
      intersect = pointsIntersect(x1 + length1 / 2 * cos(angle1),
                                  x1 - length1 / 2 * cos(angle1),
                                  x2 + length2 / 2 * cos(angle2),
@@ -929,7 +1038,6 @@ void initialize_cell(Environment enviro, int SIM_NUM, double length1,
                                  y2 - length2 / 2 * sin(angle2)
                                );
   }
-  cout << "\n -------- DONE";
 }
 
 
@@ -943,7 +1051,6 @@ int main (int argc, char* argv[]) {
   int num_save_iter = 3 * 60 / ( num_sub_iter * dt );
   int num_agents = 0;
 
-  //
   string datafolder = "./data";
   int EXP_NUM = atoi(argv[1]);
   int SIM_NUM = atoi(argv[2]);
@@ -951,18 +1058,22 @@ int main (int argc, char* argv[]) {
   string simulation_param_file = simulation_name + "params.txt";
   string simulation_agent_file = simulation_name + "sim" + to_string(SIM_NUM) + ".txt";
   filesystem::create_directories(simulation_name);
+
   Environment enviro(dt, save_time);
   enviro.writeSimulationParameters(simulation_param_file);
 
   // Initialize the cells
   EColi bacteria1;
   EColi bacteria2;
+
   bacteria1.length = bacteria1.max_length/2.0;
   bacteria2.length = bacteria2.max_length/2.0;
   double x1, x2, y1, y2, angle1, angle2;
-  double inertia = 5.0;
+
   initialize_cell(enviro, SIM_NUM, bacteria1.length, bacteria2.length, angle1, angle2,
                   x1, x2, y1, y2);
+
+  double inertia = 5.0;
 
   ABMagent* newBacteriaPntr = new ABMagent(&enviro, x1, y1,
                     bacteria1.radius,

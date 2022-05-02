@@ -66,18 +66,6 @@ void pnt2line (
   pnt_on_line_y = B_y + t * AB_y;
   distance = sqrt( pow(pnt_x - pnt_on_line_x, 2.0)
                   + pow(pnt_y - pnt_on_line_y, 2.0) );
-  /*
-  cout << "\n A_x : " << A_x;
-  cout << "\n B_x : " << B_x;
-  cout << "\n pnt_x : " << pnt_x;
-  cout << "\n A_y : " << A_y;
-  cout << "\n B_y : " << B_y;
-  cout << "\n pnt_y : " << pnt_y;
-  cout << "\n t : " << t;
-  cout << "\n pnt_on_line_x : " << pnt_on_line_x;
-  cout << "\n pnt_on_line_y : " << pnt_on_line_y;
-  cout << "\n distance : " << distance;
-  */
 
 };
 
@@ -451,7 +439,7 @@ int Environment::countNumberAgents()
       }
     }
   }
-  cout << "\nNumber of cells: " << num_agents;
+  // cout << "\nNumber of cells: " << num_agents;  // comment on niagara
   return num_agents;
 }
 
@@ -567,10 +555,6 @@ void Environment::applyForceCell2Cell
 
   normal_x = ( point_agent_x - point_other_x ) / distance;
   normal_y = ( point_agent_y - point_other_y ) / distance;
-  if ( delta > 0.4 )
-  {
-    cout << delta << '\n';
-  }
 
   vel_delta_x = agent->vel_x - other->vel_x +
                   ( agent->vel_angle * ( point_agent_y - agent->y )
@@ -918,7 +902,6 @@ void initialize_cell(Environment enviro, int SIM_NUM, double length1,
 
      y1 = y1_dist(cell_placement);
      y2 = y2_dist(cell_placement);
-     cout << "\n" << x1 << "\n"<< x2 << "\n"<< y1 << "\n"<< y2 << "\n";
      intersect = pointsIntersect(x1 + length1 / 2 * cos(angle1),
                                  x1 - length1 / 2 * cos(angle1),
                                  x2 + length2 / 2 * cos(angle2),
@@ -929,7 +912,6 @@ void initialize_cell(Environment enviro, int SIM_NUM, double length1,
                                  y2 - length2 / 2 * sin(angle2)
                                );
   }
-  cout << "\n -------- DONE";
 }
 
 
@@ -940,7 +922,7 @@ int main (int argc, char* argv[]) {
   double dt = 0.000025; // in minutes
   double save_time = 5.0; // X minutes
   int num_sub_iter = save_time / dt;
-  int num_save_iter = 3 * 60 / ( num_sub_iter * dt );
+  int num_save_iter = 1 * 60 / ( num_sub_iter * dt );
   int num_agents = 0;
 
   //
@@ -997,12 +979,14 @@ int main (int argc, char* argv[]) {
     {
       enviro.handleInteractions();
     }
+    /* uncomment when not on niagara
     cout << "\n\n-------------\n\n";
     cout << "Number of " << to_string(save_time) << " minutes runs: " << i + 1;
+    */
     num_agents = enviro.countNumberAgents();
     enviro.writeSimulationAgents(simulation_agent_file);
   }
-  cout << "\n\n-------------\n\n";
+  // cout << "\n\n-------------\n\n";
   // Anything here won't be run until the window is closed. Want to cout some
   // stats or other information? Write a file? Do something else? put it here.
   return 0;

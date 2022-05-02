@@ -6,3 +6,4 @@
 *.avi
 /Time-lapse-movies
 *.zip
+*/data/*

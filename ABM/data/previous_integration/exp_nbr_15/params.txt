@@ -1,9 +1,0 @@
-self.beta = 0.8
-self.mass = 1.0
-#self.kn = 2.0 * 10**6 * 98.1 # Something like what they have
-self.kn = 2.0 * 1E0 * 3.6 * np.sqrt(9.8) # 10**6 N m**(-3/2) -> kg /( um min ** 2 ) # 0
-self.kt = 0.0 # weird
-self.gamman = 2.2 * 1E-7 * 6 * np.sqrt(9.8) #-4
-self.gammat = 2.2 * 1E-7 * 6 * np.sqrt(9.8) #-4
-self.damping = 0.8
-dt = 0.001 # 1.0 -> 1 min

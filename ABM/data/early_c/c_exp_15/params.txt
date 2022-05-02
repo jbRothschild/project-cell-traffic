@@ -1,2 +1,0 @@
-dt, save_time, mass, beta, k_n, gamma_n, gamma_t, damping_lin, damping_tor, mu_cc, mu_cw, CELL_SIZE, CHANNEL_WIDTH, CHANNEL_HEIGHT
-2.5e-05, 5, 1, 0.8, 2e+06, 220, 220, 200000, 200000, 0.1, 0.8, 4, 44, 12

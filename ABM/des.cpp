@@ -4,6 +4,7 @@
 #include <time.h>
 #include <cmath>
 #include <string>
+#include <vector>
 #include <fstream>
 #include <iostream>
 #include <random>
@@ -18,7 +19,10 @@
 
 using namespace std;
 
-// g++ -std=c++17 des.cpp -o des.o
+// desktop : g++ -std=c++17 des.cpp -o des.o
+// niagara : load module gcc, g++ -std=c++17 -o des.o des.cpp -lstdc++fs
+// laptop : g++-8 -std=c++17 des.cpp -o des.o -lstdc++fs
+//
 // ./des.o 42 42
 random_device rd;  // could set this to a number for a fixed seed
 // mt19937 generator(rd());
@@ -26,7 +30,7 @@ mt19937 generator(0);
 mt19937 len_generator(0);
 mt19937 ang_generator(0);
 
-uniform_real_distribution<double> len_distribution(-0.025, 0.025);
+uniform_real_distribution<double> len_distribution(-0.10, 0.10);
 uniform_real_distribution<double> ang_distribution(-0.005 * PI , 0.005 * PI);
 uniform_real_distribution<double> uni_length_distribution(-0.0, 0.0);
 
@@ -878,10 +882,55 @@ bool readDataFile (string fname, int layer) {
 }
 */
 
-void initialize_cell(Environment enviro, int SIM_NUM, double length1,
-                     double length2, double &angle1, double &angle2,
-                     double &x1, double &x2, double &y1, double &y2) {
+void initialize_cells_load(Environment &enviro, string filename, int timepoint) {
+  int n = 0;
+  ifstream file(filename);
+  string str;
 
+  while ( getline(file, str) )
+  {
+    if (str.empty())
+    {
+      n+=1;
+    }
+    else if (timepoint==n)
+    {
+      // vector of the cell information, parse comma separated string
+      vector<string> vect;
+      stringstream ss(str);
+      string word;
+      while (getline(ss, word, ',')) {
+        vect.push_back(word);
+      }
+      ABMagent* newBacteriaPntr = new ABMagent(&enviro,
+                        stod(vect[1]),
+                        stod(vect[2]),
+                        stod(vect[5]),
+                        stod(vect[7]),
+                        stod(vect[4]),
+                        0.0, 0.0, 0.0, 0.0,
+                        stod(vect[3]),
+                        stod(vect[8]),
+                        0.0,
+                        stod(vect[6]),
+                        vect[0],
+                        0.0, 0.0, 0.0);
+    }
+    if ( timepoint < n ){
+      break;
+    }
+  }
+}
+
+void initialize_cells2(Environment &enviro, int SIM_NUM) {
+
+  // Initialize the cells
+  EColi bacteria1;
+  EColi bacteria2;
+  double length1 = bacteria1.max_length/2.0;
+  double length2 = bacteria2.max_length/2.0;
+  double x1, x2, y1, y2, angle1, angle2;
+  double inertia = 5.0;
   mt19937 cell_placement(SIM_NUM);
 
   uniform_real_distribution<double> x_dist(0 , enviro.CHANNEL_WIDTH);
@@ -912,39 +961,6 @@ void initialize_cell(Environment enviro, int SIM_NUM, double length1,
                                  y2 - length2 / 2 * sin(angle2)
                                );
   }
-}
-
-
-int main (int argc, char* argv[]) {
-
-  // Setup: set the random number generator's seed, initialize our display
-  // window.
-  double dt = 0.000025; // in minutes
-  double save_time = 5.0; // X minutes
-  int num_sub_iter = save_time / dt;
-  int num_save_iter = 1 * 60 / ( num_sub_iter * dt );
-  int num_agents = 0;
-
-  //
-  string datafolder = "./data";
-  int EXP_NUM = atoi(argv[1]);
-  int SIM_NUM = atoi(argv[2]);
-  string simulation_name = datafolder + "/" + "c_exp_" + to_string(EXP_NUM) + "/";
-  string simulation_param_file = simulation_name + "params.txt";
-  string simulation_agent_file = simulation_name + "sim" + to_string(SIM_NUM) + ".txt";
-  filesystem::create_directories(simulation_name);
-  Environment enviro(dt, save_time);
-  enviro.writeSimulationParameters(simulation_param_file);
-
-  // Initialize the cells
-  EColi bacteria1;
-  EColi bacteria2;
-  bacteria1.length = bacteria1.max_length/2.0;
-  bacteria2.length = bacteria2.max_length/2.0;
-  double x1, x2, y1, y2, angle1, angle2;
-  double inertia = 5.0;
-  initialize_cell(enviro, SIM_NUM, bacteria1.length, bacteria2.length, angle1, angle2,
-                  x1, x2, y1, y2);
 
   ABMagent* newBacteriaPntr = new ABMagent(&enviro, x1, y1,
                     bacteria1.radius,
@@ -968,11 +984,38 @@ int main (int argc, char* argv[]) {
                     bacteria2.growth_rate,
                     to_string(1),
                     0.0, 0.0, 0.0);
+}
+
+
+int main (int argc, char* argv[]) {
+
+  // Setup: set the random number generator's seed, initialize our display
+  // window.
+  double dt = 0.000025; // in minutes
+  double save_time = 1.0; // X minutes
+  int num_sub_iter = save_time / dt;
+  int num_save_iter = 1 * 60 / ( num_sub_iter * dt );
+  int num_agents = 0;
+
+  //
+  string datafolder = "./data";
+  int EXP_NUM = atoi(argv[1]);
+  int SIM_NUM = atoi(argv[2]);
+  string simulation_name = datafolder + "/" + "c_exp_" + to_string(EXP_NUM) + "/";
+  string simulation_param_file = simulation_name + "params.txt";
+  string simulation_agent_file = simulation_name + "sim" + to_string(SIM_NUM) + ".txt";
+  filesystem::create_directories(simulation_name);
+  Environment enviro(dt, save_time);
+  enviro.writeSimulationParameters(simulation_param_file);
+
+  //initialize_cells2(enviro, SIM_NUM);
+
+  initialize_cells_load(enviro, datafolder + "/c_exp_2/sim0.txt", 268);
 
   enviro.writeSimulationAgents(simulation_agent_file);
   // Simulation loop
-  num_save_iter = 1;
-  num_save_iter = 1;
+  // num_save_iter = 1;
+  // num_sub_iter = 1;
   for (int i = 0 ; i < num_save_iter; i++)
   {
     for (int j = 0 ; j < num_sub_iter; j++)

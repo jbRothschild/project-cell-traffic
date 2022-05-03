@@ -68,7 +68,7 @@ def plot_simulation(exp_dir, sim_nbr):
         plt.figure(figsize=(width / 2., height / 2.))
         ax = plt.axes()
         plt.ylim([0, height])
-        plt.xlim([0, width])
+        plt.xlim([0 - 3.0, width + 3.0])
         while line != "\n":
             bacteria = convert_line_2_bacteria(line)
 
@@ -94,6 +94,8 @@ def plot_simulation(exp_dir, sim_nbr):
         right_ax.set_visible(False)
         left_ax = ax.spines["left"]
         left_ax.set_visible(False)
+        plt.vlines(x=0.0, ymin=0, ymax=height, colors='k', ls=':', lw=2)
+        plt.vlines(x=width, ymin=0, ymax=height, colors='k', ls=':', lw=2)
         ax.axes.get_yaxis().set_visible(False)  # remove ticks and labels
         save_file = sim_dir + os.sep + f"{number_plot}"
         number_plot += 1

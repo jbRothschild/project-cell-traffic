@@ -78,12 +78,38 @@ def plot_simulation(exp_dir, sim_nbr):
                      path_effects=[pe.Stroke(linewidth=26, foreground='k'),
                                    pe.Normal()]
                      )
-
-            # if bacteria['daughter']:
-            # plt.scatter([bacteria['x']], [bacteria['y']], marker="o",
-            #            s=100, zorder=1, edgecolors="k")
+            """
+            if bacteria['daughter']:
+                plt.scatter([bacteria['x']], [bacteria['y']], marker="o",
+                            s=100, zorder=1, edgecolors="k")
+            if bacteria['label'] == '00101':
+                plt.scatter([bacteria['x']], [bacteria['y']], marker="X",
+                            s=100, zorder=2, edgecolors="k", c='k')
+            if bacteria['label'] == '00011':
+                plt.scatter([bacteria['x']], [bacteria['y']], marker="D",
+                            s=100, zorder=2, edgecolors="k", c='k')
+            if bacteria['label'] == '11110':
+                plt.scatter([bacteria['x']], [bacteria['y']], marker="X",
+                            s=100, zorder=2, edgecolors="k", c='k')
+            if bacteria['label'] == '101111':
+                plt.scatter([bacteria['x']], [bacteria['y']], marker="D",
+                            s=100, zorder=2, edgecolors="k", c='k')
+            if bacteria['label'] == '11111':
+                plt.scatter([bacteria['x']], [bacteria['y']], marker="P",
+                            s=100, zorder=2, edgecolors="k", c='k')
+            if bacteria['label'] == '101110':
+                plt.scatter([bacteria['x']], [bacteria['y']], marker="s",
+                            s=100, zorder=2, edgecolors="k", c='k')
+            if bacteria['label'] == '111001':
+                plt.scatter([bacteria['x']], [bacteria['y']], marker="*",
+                            s=100, zorder=2, edgecolors="k", c='k')
+            if bacteria['label'] == '11110':
+                plt.scatter([bacteria['x']], [bacteria['y']], marker="<",
+                            s=100, zorder=2, edgecolors="k", c='k')
+            """
 
             line = agents.readline()
+
         plt.tick_params(axis='x',          # changes apply to the x-axis
                         which='both',      # both major and minor ticks are affected
                         bottom=True,      # ticks along the bottom edge are off
@@ -115,7 +141,7 @@ def gif_experiment(dir, modulus=1, fileExt=r'.png'):
     def tryint(s):
         try:
             return int(s)
-        except:
+        except Exception:
             return s
 
     def alphanum_key(s):

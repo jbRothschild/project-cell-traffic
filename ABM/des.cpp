@@ -7,17 +7,20 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 #include <random>
 #include <sstream>
 #include <list>
 #include <vector>
 #include <filesystem>
+#include <chrono>
 #include "intersect.hpp"
 #include "bacteria.hpp"
 
 #define PI 3.14159265359
 
 using namespace std;
+using namespace std::chrono;
 
 // desktop : g++ -std=c++17 des.cpp -o des.o
 // niagara : load module gcc, g++ -std=c++17 -o des.o des.cpp -lstdc++fs
@@ -25,12 +28,12 @@ using namespace std;
 //
 // ./des.o 42 42
 random_device rd;  // could set this to a number for a fixed seed
-// mt19937 generator(rd());
-mt19937 generator(0);
-mt19937 len_generator(0);
-mt19937 ang_generator(0);
+//mt19937 generator(rd() OR 0);
+mt19937 generator(rd());
+mt19937 len_generator(rd());
+mt19937 ang_generator(rd());
 
-uniform_real_distribution<double> len_distribution(-0.10, 0.10);
+uniform_real_distribution<double> len_distribution(-0.05, 0.05);
 uniform_real_distribution<double> ang_distribution(-0.005 * PI , 0.005 * PI);
 uniform_real_distribution<double> uni_length_distribution(-0.0, 0.0);
 
@@ -47,7 +50,7 @@ void pnt2line (
                 double pnt_y,
                 double &pnt_on_line_x,
                 double &pnt_on_line_y,
-                double &distance
+                double &dist
               )
 {
 
@@ -65,12 +68,10 @@ void pnt2line (
   {
     t = 1;
   }
-
   pnt_on_line_x = B_x + t * AB_x;
   pnt_on_line_y = B_y + t * AB_y;
-  distance = sqrt( pow(pnt_x - pnt_on_line_x, 2.0)
+  dist = sqrt( pow(pnt_x - pnt_on_line_x, 2.0)
                   + pow(pnt_y - pnt_on_line_y, 2.0) );
-
 };
 
 
@@ -166,6 +167,9 @@ class Environment
     double mu_cc = 0.1;
     double mu_cw = 0.8;
     bool split_bool= false;
+    string file_param;
+    string file_agents;
+    string file_data;
     static constexpr double CELL_SIZE = 4.0;
 
     static constexpr double CHANNEL_WIDTH = 44.0;
@@ -175,10 +179,14 @@ class Environment
     static const int NUM_CELLS_HEIGHT = 2 + ceil( CHANNEL_HEIGHT / CELL_SIZE);
 
 
-    Environment(double dt_, double save_time_)
+    Environment(double dt_, double save_time_, string file_param_,
+                string file_agents_, string file_data_)
     {
       dt = dt_;
       save_time = save_time_;
+      file_param = file_param_;
+      file_agents = file_agents_;
+      file_data = file_data_;
       // Clear the environment.
       for (int x = 0; x < NUM_CELLS_WIDTH; x++)
       {
@@ -189,16 +197,14 @@ class Environment
       }
     }
 
-
-    Environment(string filename_paramaters, string filename_agents);
     void add(ABMagent* agent);
     void move(ABMagent* agent, double x_prev, double y_prev);
     void applyForceCell2Cell(ABMagent* agent, ABMagent* other,
                           double point_agent_x, double point_agent_y,
                           double point_other_x, double point_other_y,
-                          double distance
+                          double dist
                        );
-   void applyForceCell2Wall(ABMagent* agent, double point_agent_x,
+    void applyForceCell2Wall(ABMagent* agent, double point_agent_x,
                           double point_agent_y, double point_wall_y,
                           double separation
                       );
@@ -211,8 +217,9 @@ class Environment
     void handleInteractions();
     int countNumberAgents();
     void save_data();
-    void writeSimulationAgents(string filename);
-    void writeSimulationParameters(string filename);
+    void writeSimulationAgents();
+    void writeSimulationData();
+    void writeSimulationParameters();
   private:
     ABMagent* grid_[NUM_CELLS_WIDTH][NUM_CELLS_HEIGHT];
 };
@@ -300,11 +307,11 @@ void ABMagent::print()
 }
 
 
-void Environment::writeSimulationParameters(string filename)
+void Environment::writeSimulationParameters()
 {
   // Saves parameters of the simulation in this order for use later in reloading
   // of simulations.
-  ofstream myfile(filename);
+  ofstream myfile(file_param);
   string save_items = "dt, save_time, mass, beta, k_n, gamma_n, gamma_t, "
             "damping_lin, damping_tor, mu_cc, mu_cw, CELL_SIZE, CHANNEL_WIDTH, "
             "CHANNEL_HEIGHT\n";
@@ -317,14 +324,14 @@ void Environment::writeSimulationParameters(string filename)
 }
 
 
-void Environment::writeSimulationAgents(string filename)
+void Environment::writeSimulationAgents()
 {
   // Skips line at the end to show new timestep is being saved. Constructor
   // of Environment can reload last saved timestep.
   ofstream fout;
   //ifstream fin;
   //fin.open(filename);
-  fout.open(filename, std::ios_base::app);
+  fout.open(file_agents, std::ios_base::app);
   ABMagent* agent;
   //if (fin.is_open())
   //{
@@ -349,6 +356,52 @@ void Environment::writeSimulationAgents(string filename)
     fout << "\n";
   //}
   //fin.close();
+  fout.close();
+}
+
+
+int countDigit(int n)
+{
+    if (n/10 == 0)
+        return 1;
+    return 1 + countDigit(n / 10);
+}
+
+
+void Environment::writeSimulationData()
+{
+  // Skips line at the end to show new timestep is being saved. Constructor
+  // of Environment can reload last saved timestep.
+  ofstream fout;
+  int nbr_strains = 2;
+  int digits = countDigit(nbr_strains);
+  fout.open(file_data, std::ios_base::app);
+  ABMagent* agent;
+  double tot_length [nbr_strains] = {0}; // TODO :replace 2 with number starting strains
+  int tot_count [nbr_strains] = {0};
+  // Data acquisition
+  for (int x = 1; x < NUM_CELLS_WIDTH; x++)
+  {
+    for (int y = 1; y < NUM_CELLS_HEIGHT; y++)
+    {
+      agent = grid_[x][y];
+      while (agent != NULL)
+      {
+        tot_length[stoi( (agent->label).substr(0, digits) )] += agent->length;
+        tot_count[stoi( (agent->label).substr(0, digits) )] += 1;
+        agent = agent->next_;
+      }
+    }
+  }
+  string str_len = "[";
+  for (int i = 0; i < nbr_strains; i++)
+  {
+    str_len += to_string(tot_length[i]);
+    str_len += ",";
+  }
+  str_len.pop_back();
+  str_len += "]";
+  fout << str_len << "\n";
   fout.close();
 }
 
@@ -462,15 +515,15 @@ void ABMagent::split()
   double rand_angle = ang_distribution(ang_generator);
   double angle_daugh = angle - rand_angle;
   double rand_length = len_distribution(len_generator);
-  double x_daugh = x - length * cos(angle) * ( 1.0 - 4.0 * rand_length ) / 4.0;
-  x += length * cos(angle) * ( 1.0 + 4.0 * rand_length ) / 4.0;
-  double y_daugh = y - length * sin(angle) * ( 1.0 - 4.0 * rand_length ) / 4.0;
-  y += length * sin(angle) * ( 1.0 + 4.0 * rand_length ) / 4.0;
+  double x_daugh = x - length * cos(angle) * ( 1.0 + 4.0 * rand_length ) / 4.0 ;
+  x += length * cos(angle) * ( 1.0 - 4.0 * rand_length ) / 4.0;
+  double y_daugh = y - length * sin(angle) * ( 1.0 + 4.0 * rand_length ) / 4.0 ;
+  y += length * sin(angle) * ( 1.0 - 4.0 * rand_length ) / 4.0;
   // Update length shortened
   angle += rand_angle;
   length /= 2.0;
-  double length_daugh = length - 2.0 * rand_length;
-  length += 2.0 * rand_length;
+  double length_daugh = length * ( 1.0 - 4.0 * rand_length );
+  length += 4.0 * rand_length * length;
 
   // new CoM velocities
 
@@ -535,11 +588,11 @@ void Environment::applyForceCell2Cell
   double point_agent_y,
   double point_other_x,
   double point_other_y,
-  double distance
+  double dist
 )
 {
   double M_e = mass / 2.0;
-  double delta = agent->radius + other->radius - distance;
+  double delta = agent->radius + other->radius - dist;
   double ext_force_x = 0.0;
   double ext_force_y = 0.0;
   double normal_x;
@@ -557,8 +610,8 @@ void Environment::applyForceCell2Cell
   double max_friction;
   double friction;
 
-  normal_x = ( point_agent_x - point_other_x ) / distance;
-  normal_y = ( point_agent_y - point_other_y ) / distance;
+  normal_x = ( point_agent_x - point_other_x ) / dist;
+  normal_y = ( point_agent_y - point_other_y ) / dist;
 
   vel_delta_x = agent->vel_x - other->vel_x +
                   ( agent->vel_angle * ( point_agent_y - agent->y )
@@ -656,68 +709,81 @@ void Environment::handleAgent(ABMagent* agent, ABMagent* other)
 {
   while (other != NULL)
   {
-  double distance_x = other->x - agent->x;
-  double distance_y = other->y - agent->y;
-  double distance_centers = sqrt( pow(distance_x, 2) + pow(distance_y, 2) );
-    // Continue only if centers are a certain distance from eachother
-    if ( 2.0 * distance_centers < agent->length + other->length )
+  double dist_x = other->x - agent->x;
+  double dist_y = other->y - agent->y;
+  double dist_centers = sqrt( pow(dist_x, 2) + pow(dist_y, 2) );
+    // Continue only if centers are a certain dist from eachother
+    // cout << "\n filter 1";
+    if ( 2.0 * dist_centers < agent->length + other->length )
     {
-      //cout << "\n filter 1";
-      // Continue only if there is potential overlap
+      // Continue only if there is potential overlap, that is to say if the
+      // projection onto eachother
+      // cout << "\n filter 2";
       double vector_agent_x = ( agent->length - 2.0 * agent->radius ) * cos(agent->angle) / 2.0;
       double vector_agent_y = ( agent->length - 2.0 * agent->radius ) * sin(agent->angle) / 2.0;
       double vector_other_x = ( other->length - 2.0 * other->radius ) * cos(other->angle) / 2.0;
       double vector_other_y = ( other->length - 2.0 * other->radius ) * sin(other->angle) / 2.0;
       double project_agent;
       double project_other;
-      project_agent = ( distance_x * vector_agent_x
-                        + distance_y * vector_agent_y ) / distance_centers; // I put length distance_length before... why?
-      project_other = ( distance_x * vector_other_x
-                        + distance_y * vector_other_y ) / distance_centers;
+      project_agent = ( dist_x * vector_agent_x
+                        + dist_y * vector_agent_y ) / dist_centers; // I put length dist_length before... why?
+      project_other = ( dist_x * vector_other_x
+                        + dist_y * vector_other_y ) / dist_centers;
       if (agent->radius + other->radius
-                  > distance_centers - abs(project_agent) - abs(project_other) )
+                  > dist_centers - abs(project_agent) - abs(project_other) )
       {
-        //cout << "\n filter 2";
-        double point_agent_x;
-        double point_agent_y;
-        double point_other_x;
-        double point_other_y;
-        double line_seg_x1;
-        double line_seg_y1;
-        double line_seg_x2;
-        double line_seg_y2;
-        double distance;
+        double point_agent_x[4];
+        double point_agent_y[4];
+        double point_other_x[4];
+        double point_other_y[4];
+        double X [4] = {other->x + vector_other_x, other->x - vector_other_x,
+                         agent->x + vector_agent_x, agent->x - vector_agent_x};
+        double Y [4] = {other->y + vector_other_y, other->y - vector_other_y,
+                        agent->y + vector_agent_y, agent->y - vector_agent_y};
+        double dist[4];
+        int idx_min;
+        for (int i = 0; i<4; i++)
+        {
+          if ( i > 1 )
+          {
+            point_agent_x[i] = X[i];
+            point_agent_y[i] = Y[i];
+            pnt2line(X[0], Y[0], X[1], Y[1], point_agent_x[i], point_agent_y[i],
+                     point_other_x[i], point_other_y[i], dist[i]);
+          }
+          else
+          {
+            point_other_x[i] = X[i];
+            point_other_y[i] = Y[i];
+            pnt2line(X[2], Y[2], X[3], Y[3], point_other_x[i], point_other_y[i],
+                     point_agent_x[i], point_agent_y[i], dist[i]);
+          }
+        }
+        idx_min = distance(begin(dist), min_element(begin(dist), end(dist)));
 
-        if ( abs(project_agent) >= abs(project_other) )
+        if ( dist[idx_min] < agent->radius + other->radius)
         {
-          point_agent_x = agent->x + sgn(project_agent) * vector_agent_x; // I thought this had to be + ???
-          point_agent_y = agent->y + sgn(project_agent) * vector_agent_y;
-          line_seg_x1 = other->x - vector_other_x;
-          line_seg_x2 = other->x + vector_other_x;
-          line_seg_y1 = other->y - vector_other_y;
-          line_seg_y2 = other->y + vector_other_y;
-          pnt2line(line_seg_x1, line_seg_y1, line_seg_x2, line_seg_y2,
-                    point_agent_x, point_agent_y, point_other_x,
-                    point_other_y, distance);
-        }
-        if ( abs(project_agent) < abs(project_other)  )
-        {
-          point_other_x = other->x - sgn(project_other) * vector_other_x;
-          point_other_y = other->y - sgn(project_other) * vector_other_y;
-          line_seg_x1 = agent->x - vector_agent_x;
-          line_seg_x2 = agent->x + vector_agent_x;
-          line_seg_y1 = agent->y - vector_agent_y;
-          line_seg_y2 = agent->y + vector_agent_y;
-          pnt2line(line_seg_x1, line_seg_y1, line_seg_x2, line_seg_y2,
-                    point_other_x, point_other_y, point_agent_x,
-                    point_agent_y, distance);
-        }
-        if ( distance < agent->radius + other->radius)
-        {
+
           //cout << "\n filter 3";
-          applyForceCell2Cell(agent, other, point_agent_x, point_agent_y,
-                                point_other_x, point_other_y, distance);
+          applyForceCell2Cell(agent, other, point_agent_x[idx_min],
+                              point_agent_y[idx_min], point_other_x[idx_min],
+                              point_other_y[idx_min], dist[idx_min]);
         }
+        /*
+        if ( (agent->label == problem && other->label == problem2) ||
+              (other->label == problem && agent->label == problem2) )
+        {
+          cout << "other.\n";
+          cout << "Cell " << agent->label << ", p1 : ( " << X[2]<< " , "
+              << Y[2] << " ) and p2 : ( " << X[3] << " , " << Y[3] << " ).\n";
+          cout << "Cell " << other->label << ", p1 : ( " << X[0]<< " , "
+              << Y[0] << " ) and p2 : ( " << X[1] << " , " << Y[1] << " ).\n";
+          cout << "Contact " << agent->label <<  " : ( " << point_agent_x[idx_min]
+              << " , " << point_agent_y[idx_min] << " ) and " << other->label
+              <<  " : ( " << point_other_x[idx_min] << " , " << point_other_y[idx_min] << " ).\n";
+          cout << dist[idx_min] << "\n";
+        }
+        */
       }
     }
 
@@ -882,7 +948,8 @@ bool readDataFile (string fname, int layer) {
 }
 */
 
-void initialize_cells_load(Environment &enviro, string filename, int timepoint) {
+void initialize_cells_load(Environment &enviro, string filename, int timepoint)
+{
   int n = 0;
   ifstream file(filename);
   string str;
@@ -920,6 +987,8 @@ void initialize_cells_load(Environment &enviro, string filename, int timepoint) 
       break;
     }
   }
+  enviro.writeSimulationAgents();
+  enviro.writeSimulationData();
 }
 
 void initialize_cells2(Environment &enviro, int SIM_NUM) {
@@ -984,6 +1053,8 @@ void initialize_cells2(Environment &enviro, int SIM_NUM) {
                     bacteria2.growth_rate,
                     to_string(1),
                     0.0, 0.0, 0.0);
+  enviro.writeSimulationAgents();
+  enviro.writeSimulationData();
 }
 
 
@@ -994,28 +1065,29 @@ int main (int argc, char* argv[]) {
   double dt = 0.000025; // in minutes
   double save_time = 1.0; // X minutes
   int num_sub_iter = save_time / dt;
-  int num_save_iter = 1 * 60 / ( num_sub_iter * dt );
+  int num_save_iter = 12 * 60 / ( num_sub_iter * dt );
   int num_agents = 0;
 
   //
   string datafolder = "./data";
   int EXP_NUM = atoi(argv[1]);
   int SIM_NUM = atoi(argv[2]);
-  string simulation_name = datafolder + "/" + "c_exp_" + to_string(EXP_NUM) + "/";
-  string simulation_param_file = simulation_name + "params.txt";
-  string simulation_agent_file = simulation_name + "sim" + to_string(SIM_NUM) + ".txt";
-  filesystem::create_directories(simulation_name);
-  Environment enviro(dt, save_time);
-  enviro.writeSimulationParameters(simulation_param_file);
+  string sim_name = datafolder + "/" + "c_exp_" + to_string(EXP_NUM) + "/";
+  string sim_param_file = sim_name + "params.txt";
+  string sim_agent_file = sim_name + "sim" + to_string(SIM_NUM) + ".txt";
+  string sim_data_file = sim_name + "sim" + to_string(SIM_NUM) + "_data.txt";
+  filesystem::create_directories(sim_name);
+  Environment enviro(dt, save_time, sim_name, sim_agent_file, sim_data_file);
+  enviro.writeSimulationParameters();
 
-  //initialize_cells2(enviro, SIM_NUM);
+  initialize_cells2(enviro, SIM_NUM);
 
-  initialize_cells_load(enviro, datafolder + "/c_exp_2/sim0.txt", 268);
+  //initialize_cells_load(enviro, datafolder + "/c_exp_0/sim1.txt", 11);
 
-  enviro.writeSimulationAgents(simulation_agent_file);
+  auto start = high_resolution_clock::now();
   // Simulation loop
-  // num_save_iter = 1;
-  // num_sub_iter = 1;
+  //num_save_iter = 1;
+  //num_sub_iter = 1;
   for (int i = 0 ; i < num_save_iter; i++)
   {
     for (int j = 0 ; j < num_sub_iter; j++)
@@ -1026,9 +1098,18 @@ int main (int argc, char* argv[]) {
     cout << "\n\n-------------\n\n";
     cout << "Number of " << to_string(save_time) << " minutes runs: " << i + 1;
     */
-    num_agents = enviro.countNumberAgents();
-    enviro.writeSimulationAgents(simulation_agent_file);
+    // num_agents = enviro.countNumberAgents();
+    enviro.writeSimulationAgents();
+    enviro.writeSimulationData();
   }
+  auto stop = high_resolution_clock::now();
+
+  auto duration = duration_cast<seconds>(stop - start);
+
+  // To get the value of duration use the count()
+  // member function on the duration object
+  cout << duration.count() << endl;
+
   // cout << "\n\n-------------\n\n";
   // Anything here won't be run until the window is closed. Want to cout some
   // stats or other information? Write a file? Do something else? put it here.

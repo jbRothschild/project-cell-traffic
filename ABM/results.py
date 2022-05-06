@@ -1,10 +1,9 @@
-from python_src import plotting, analysis
-import numpy as np
+from python_src import plotting
 import os
 
 
 if __name__ == '__main__':
-    exp_nbr = 2
+    exp_nbr = 0
     sim_nbr = 1
 
     exp_dir = os.getcwd() + os.sep + 'data' + os.sep + f'c_exp_{exp_nbr}'

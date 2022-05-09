@@ -23,7 +23,7 @@ using namespace std;
 using namespace std::chrono;
 
 // desktop : g++ -std=c++17 des.cpp -o des.o
-// niagara : load module gcc, g++ -std=c++17 -o des.o des.cpp -lstdc++fs
+// niagara : module load gcc, g++ -std=c++17 -o des.o des.cpp -lstdc++fs
 // laptop : g++-8 -std=c++17 des.cpp -o des.o -lstdc++fs
 //
 // ./des.o 42 42
@@ -1063,9 +1063,9 @@ int main (int argc, char* argv[]) {
   // Setup: set the random number generator's seed, initialize our display
   // window.
   double dt = 0.000025; // in minutes
-  double save_time = 1.0; // X minutes
+  double save_time = 5.0; // X minutes
   int num_sub_iter = save_time / dt;
-  int num_save_iter = 12 * 60 / ( num_sub_iter * dt );
+  int num_save_iter = 72 * 60 / ( num_sub_iter * dt );
   int num_agents = 0;
 
   //
@@ -1077,7 +1077,7 @@ int main (int argc, char* argv[]) {
   string sim_agent_file = sim_name + "sim" + to_string(SIM_NUM) + ".txt";
   string sim_data_file = sim_name + "sim" + to_string(SIM_NUM) + "_data.txt";
   filesystem::create_directories(sim_name);
-  Environment enviro(dt, save_time, sim_name, sim_agent_file, sim_data_file);
+  Environment enviro(dt, save_time, sim_param_file, sim_agent_file, sim_data_file);
   enviro.writeSimulationParameters();
 
   initialize_cells2(enviro, SIM_NUM);

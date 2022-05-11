@@ -78,35 +78,74 @@ def plot_simulation(exp_dir, sim_nbr):
                      path_effects=[pe.Stroke(linewidth=26, foreground='k'),
                                    pe.Normal()]
                      )
-            """
-            if bacteria['daughter']:
-                plt.scatter([bacteria['x']], [bacteria['y']], marker="o",
-                            s=100, zorder=1, edgecolors="k")
-            if bacteria['label'] == '00101':
-                plt.scatter([bacteria['x']], [bacteria['y']], marker="X",
-                            s=100, zorder=2, edgecolors="k", c='k')
-            if bacteria['label'] == '00011':
-                plt.scatter([bacteria['x']], [bacteria['y']], marker="D",
-                            s=100, zorder=2, edgecolors="k", c='k')
-            if bacteria['label'] == '11110':
-                plt.scatter([bacteria['x']], [bacteria['y']], marker="X",
-                            s=100, zorder=2, edgecolors="k", c='k')
-            if bacteria['label'] == '101111':
-                plt.scatter([bacteria['x']], [bacteria['y']], marker="D",
-                            s=100, zorder=2, edgecolors="k", c='k')
-            if bacteria['label'] == '11111':
-                plt.scatter([bacteria['x']], [bacteria['y']], marker="P",
-                            s=100, zorder=2, edgecolors="k", c='k')
-            if bacteria['label'] == '101110':
-                plt.scatter([bacteria['x']], [bacteria['y']], marker="s",
-                            s=100, zorder=2, edgecolors="k", c='k')
-            if bacteria['label'] == '111001':
-                plt.scatter([bacteria['x']], [bacteria['y']], marker="*",
-                            s=100, zorder=2, edgecolors="k", c='k')
-            if bacteria['label'] == '11110':
-                plt.scatter([bacteria['x']], [bacteria['y']], marker="<",
-                            s=100, zorder=2, edgecolors="k", c='k')
-            """
+
+            line = agents.readline()
+
+        plt.tick_params(axis='x',          # changes apply to the x-axis
+                        which='both',      # both major and minor ticks are affected
+                        bottom=True,      # ticks along the bottom edge are off
+                        top=True,         # ticks along the top edge are off
+                        labelbottom=False)  # labels along the bottom edge are off
+        # x.set_frame_on(False)
+        right_ax = ax.spines["right"]
+        right_ax.set_visible(False)
+        left_ax = ax.spines["left"]
+        left_ax.set_visible(False)
+        plt.vlines(x=0.0, ymin=0, ymax=height, colors='k', ls=':', lw=2)
+        plt.vlines(x=width, ymin=0, ymax=height, colors='k', ls=':', lw=2)
+        ax.axes.get_yaxis().set_visible(False)  # remove ticks and labels
+        save_file = sim_dir + os.sep + f"{number_plot}"
+        number_plot += 1
+        plt.savefig(save_file + ".png")
+        plt.savefig(save_file + ".pdf")
+        plt.close()
+        line = agents.readline()
+
+    return sim_dir
+
+
+def plot_simulation_many_init(exp_dir, sim_nbr):
+    plt.style.use('seaborn-dark-palette')
+    sim_dir = exp_dir + os.sep + f"sim{sim_nbr}"
+    Path(sim_dir).mkdir(parents=True, exist_ok=True)  # make directory
+
+    agents_file = exp_dir + os.sep + f"sim{sim_nbr}.txt"
+    params_file = exp_dir + os.sep + "params.txt"
+    environment = convert_file_2_environment_dict(params_file)
+
+    init_count = open(agents_file, 'r')
+    init_line = init_count.readline()
+    nbr_species = 0
+    while init_line:
+        while init_line != "\n":
+            nbr_species += 1
+    init_count.close()
+
+    agents = open(agents_file, 'r')
+    line = agents.readline()
+
+    number_plot = 0
+    cmap = plt.cm.gist_ncar
+    while line:
+        width = environment['CHANNEL_WIDTH']
+        height = environment['CHANNEL_HEIGHT']
+        plt.figure(figsize=(width / 2., height / 2.))
+        ax = plt.axes()
+        ax.set_prop_cycle(rcsetup.cycler('color', camp(nbr_species)))
+        seen = set()
+        colors = list(itertools.takewhile(lambda x: x not in seen and not seen.add(x), (tuple(item['color']) for item in ax._get_lines.prop_cycler)))
+        plt.ylim([0, height])
+        plt.xlim([0 - 3.0, width + 3.0])
+        while line != "\n":
+            bacteria = convert_line_2_bacteria(line)
+
+            plt.plot([bacteria['p1'][0], bacteria['p2'][0]], [bacteria['p1'][1],
+                     bacteria['p2'][1]], lw=24, solid_capstyle='round',
+                     color=colors[int(bacteria['label'][:len(str(nbr_species))])],
+                     zorder=-1, path_effects=[
+                                        pe.Stroke(linewidth=26, foreground='k'),
+                                        pe.Normal()]
+                     )
 
             line = agents.readline()
 

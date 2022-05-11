@@ -170,6 +170,7 @@ class Environment
     string file_param;
     string file_agents;
     string file_data;
+    int nbr_strains;
     static constexpr double CELL_SIZE = 4.0;
 
     static constexpr double CHANNEL_WIDTH = 44.0;
@@ -373,7 +374,6 @@ void Environment::writeSimulationData()
   // Skips line at the end to show new timestep is being saved. Constructor
   // of Environment can reload last saved timestep.
   ofstream fout;
-  int nbr_strains = 2;
   int digits = countDigit(nbr_strains);
   fout.open(file_data, std::ios_base::app);
   ABMagent* agent;
@@ -948,11 +948,67 @@ bool readDataFile (string fname, int layer) {
 }
 */
 
-void initialize_cells_load(Environment &enviro, string filename, int timepoint)
+
+int initialize_cells_load_relabel(Environment &enviro, string filename,
+                                    int timepoint, int nbr_zeros)
+{
+  int n = 0;
+  int i = 0;
+  string new_label;
+  string label_i;
+  ifstream file(filename);
+  string str;
+
+  while ( getline(file, str) )
+  {
+    if (str.empty())
+    {
+      n+=1;
+    }
+    else if (timepoint==n)
+    {
+      // vector of the cell information, parse comma separated string
+      vector<string> vect;
+      stringstream ss(str);
+      string word;
+      while (getline(ss, word, ',')) {
+        vect.push_back(word);
+      }
+      label_i = to_string(i);
+      int len_label = label_i.length();
+      new_label = string(nbr_zeros - std::min(nbr_zeros, len_label), '0')
+                          + label_i;
+      ABMagent* newBacteriaPntr = new ABMagent(&enviro,
+                        stod(vect[1]),
+                        stod(vect[2]),
+                        stod(vect[5]),
+                        stod(vect[7]),
+                        stod(vect[4]),
+                        0.0, 0.0, 0.0, 0.0,
+                        stod(vect[3]),
+                        stod(vect[8]),
+                        0.0,
+                        stod(vect[6]),
+                        new_label,
+                        0.0, 0.0, 0.0);
+      i++;
+    }
+    if ( timepoint < n ){
+      break;
+    }
+  }
+  enviro.writeSimulationAgents();
+  enviro.writeSimulationData();
+  return i;
+}
+
+
+int initialize_cells_load(Environment &enviro, string filename, int timepoint)
 {
   int n = 0;
   ifstream file(filename);
   string str;
+  int nbr_strains = 2;
 
   while ( getline(file, str) )
   {
@@ -989,9 +1045,10 @@ void initialize_cells_load(Environment &enviro, string filename, int timepoint)
   }
   enviro.writeSimulationAgents();
   enviro.writeSimulationData();
+  return nbr_strains;
 }
 
-void initialize_cells2(Environment &enviro, int SIM_NUM) {
+int initialize_cells2(Environment &enviro, int SIM_NUM) {
 
   // Initialize the cells
   EColi bacteria1;
@@ -1055,6 +1112,8 @@ void initialize_cells2(Environment &enviro, int SIM_NUM) {
                     0.0, 0.0, 0.0);
   enviro.writeSimulationAgents();
   enviro.writeSimulationData();
+
+  return 2;
 }
 
 
@@ -1065,7 +1124,7 @@ int main (int argc, char* argv[]) {
   double dt = 0.000025; // in minutes
   double save_time = 5.0; // X minutes
   int num_sub_iter = save_time / dt;
-  int num_save_iter = 72 * 60 / ( num_sub_iter * dt );
+  int num_save_iter = 48 * 60 / ( num_sub_iter * dt );
   int num_agents = 0;
 
   //
@@ -1080,9 +1139,10 @@ int main (int argc, char* argv[]) {
   Environment enviro(dt, save_time, sim_param_file, sim_agent_file, sim_data_file);
   enviro.writeSimulationParameters();
 
-  initialize_cells2(enviro, SIM_NUM);
+  //enviro.nbr_strains = initialize_cells2(enviro, SIM_NUM);
 
-  //initialize_cells_load(enviro, datafolder + "/c_exp_0/sim1.txt", 11);
+  //enviro.nbr_strains = initialize_cells_load(enviro, datafolder + "/c_exp_0/sim1.txt", 11);
+  enviro.nbr_strains = initialize_cells_load_relabel(enviro, datafolder + "/c_exp_0/sim" + argv[2] + ".txt", 864, 3);
 
   auto start = high_resolution_clock::now();
   // Simulation loop

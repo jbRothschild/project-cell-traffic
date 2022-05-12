@@ -159,7 +159,7 @@ class Environment
     double save_time;
     double mass = 1.0; // 1/5
     double beta = 0.8;
-    double k_n = 4500000.0; // 4000000.0
+    double k_n = 45000000.0; // 4000000.0
     double gamma_n = 0.0; // 0.00
     double gamma_t = 0.0; // 0.00
     double damping_lin = 200.0 * 60; // 12000
@@ -998,6 +998,7 @@ int initialize_cells_load_relabel(Environment &enviro, string filename,
     }
   }
   enviro.writeSimulationAgents();
+  enviro.nbr_strains = i;
   enviro.writeSimulationData();
   return i;
 }
@@ -1044,6 +1045,7 @@ int initialize_cells_load(Environment &enviro, string filename, int timepoint)
     }
   }
   enviro.writeSimulationAgents();
+  enviro.nbr_strains = nbr_strains;
   enviro.writeSimulationData();
   return nbr_strains;
 }
@@ -1111,6 +1113,7 @@ int initialize_cells2(Environment &enviro, int SIM_NUM) {
                     to_string(1),
                     0.0, 0.0, 0.0);
   enviro.writeSimulationAgents();
+  enviro.nbr_strains = 2;
   enviro.writeSimulationData();
 
   return 2;
@@ -1124,7 +1127,7 @@ int main (int argc, char* argv[]) {
   double dt = 0.000025; // in minutes
   double save_time = 5.0; // X minutes
   int num_sub_iter = save_time / dt;
-  int num_save_iter = 48 * 60 / ( num_sub_iter * dt );
+  int num_save_iter = 8 * 60 / ( num_sub_iter * dt );
   int num_agents = 0;
 
   //
@@ -1139,10 +1142,10 @@ int main (int argc, char* argv[]) {
   Environment enviro(dt, save_time, sim_param_file, sim_agent_file, sim_data_file);
   enviro.writeSimulationParameters();
 
-  //enviro.nbr_strains = initialize_cells2(enviro, SIM_NUM);
+  enviro.nbr_strains = initialize_cells2(enviro, SIM_NUM);
 
   //enviro.nbr_strains = initialize_cells_load(enviro, datafolder + "/c_exp_0/sim1.txt", 11);
-  enviro.nbr_strains = initialize_cells_load_relabel(enviro, datafolder + "/c_exp_0/sim" + argv[2] + ".txt", 864, 3);
+  //enviro.nbr_strains = initialize_cells_load_relabel(enviro, datafolder + "/c_exp_0/sim" + argv[2] + ".txt", 864, 3);
 
   auto start = high_resolution_clock::now();
   // Simulation loop

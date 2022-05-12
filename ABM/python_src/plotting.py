@@ -3,6 +3,7 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
+from matplotlib.patches import Rectangle
 import imageio
 from pathlib import Path
 
@@ -65,18 +66,21 @@ def plot_simulation(exp_dir, sim_nbr):
     while line:
         width = environment['CHANNEL_WIDTH']
         height = environment['CHANNEL_HEIGHT']
-        plt.figure(figsize=(width / 2., height / 2.))
+        resize = 2.0
+        plt.figure(figsize=(width / resize, height / resize))
+        pixels = 120. / resize
         ax = plt.axes()
+        # ax.add_patch(Rectangle((21.0, 5.68), 2, 0.65))
         plt.ylim([0, height])
         plt.xlim([0 - 3.0, width + 3.0])
         while line != "\n":
             bacteria = convert_line_2_bacteria(line)
 
             plt.plot([bacteria['p1'][0], bacteria['p2'][0]], [bacteria['p1'][1],
-                     bacteria['p2'][1]], lw=24, solid_capstyle='round',
+                     bacteria['p2'][1]], lw=int(pixels * bacteria['radius']) - 2, solid_capstyle='round',
                      color=BACT_COL[bacteria['label'][0]], zorder=-1,
-                     path_effects=[pe.Stroke(linewidth=26, foreground='k'),
-                                   pe.Normal()]
+                     path_effects=[pe.Stroke(linewidth=int(pixels * bacteria['radius']),
+                                             foreground='k'), pe.Normal()]
                      )
 
             line = agents.readline()
@@ -131,7 +135,7 @@ def plot_simulation_many_init(exp_dir, sim_nbr):
         height = environment['CHANNEL_HEIGHT']
         plt.figure(figsize=(width / 2., height / 2.))
         ax = plt.axes()
-        ax.set_prop_cycle(rcsetup.cycler('color', camp(nbr_species)))
+        ax.set_prop_cycle(rcsetup.cycler('color', cmap(nbr_species)))
         seen = set()
         colors = list(itertools.takewhile(lambda x: x not in seen and not seen.add(x), (tuple(item['color']) for item in ax._get_lines.prop_cycler)))
         plt.ylim([0, height])

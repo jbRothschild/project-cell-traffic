@@ -33,9 +33,12 @@ mt19937 generator(rd());
 mt19937 len_generator(rd());
 mt19937 ang_generator(rd());
 
-uniform_real_distribution<double> len_distribution(-0.05, 0.05);
-uniform_real_distribution<double> ang_distribution(-0.005 * PI , 0.005 * PI);
-uniform_real_distribution<double> uni_length_distribution(-0.0, 0.0);
+float ang = 0.005;
+float len = 0.05;
+float max_len = 0.1;
+uniform_real_distribution<double> len_distribution(-len, len);
+uniform_real_distribution<double> ang_distribution(-ang * PI , ang * PI);
+uniform_real_distribution<double> uni_length_distribution(-max_len, max_len);
 
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));

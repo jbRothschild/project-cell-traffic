@@ -8,7 +8,8 @@ import python_src
 BACT_COL = {'0': 'r', '1': 'g', '2': 'b', '3': 'c', '4': 'm', '5': 'y', '6': 'k'}
 
 
-def collect_data_array(data_folder, nbr_simulations, nbr_species, nbr_lines=None):
+def collect_data_array(data_folder, nbr_simulations, nbr_species,
+                       nbr_lines=None, timestep=1. / 12., labels=None):
     if nbr_lines is None:
         nbr_lines = sum(1 for line in open(data_folder + os.sep + 'sim0_data.txt'))
     data = np.zeros((nbr_simulations, nbr_species, nbr_lines))
@@ -25,15 +26,10 @@ def collect_data_array(data_folder, nbr_simulations, nbr_species, nbr_lines=None
     return data
 
 
-labels = ['E. Coli Alt 1', 'E. Coli Alt 2']
-labels = ['C. Subtillus', 'E. Coli']
-labels = ['E.Coli strain A', 'E. Coli strain B']
-timestep = 1. / 12.
-
-
-def length_trajectory_plots(data_folder, nbr_simulations, nbr_species, max_time=None):
+def length_trajectory_plots(data_folder, nbr_simulations, nbr_species,
+                            max_time=None, timestep=1. / 12., labels=None):
     data = collect_data_array(data_folder, nbr_simulations, nbr_species, max_time)
-    max_t = np.shape(data)[2] * 1. / 12.
+    max_t = np.shape(data)[2] * timestep
     t = np.arange(0., max_t, timestep)
     # dist_extinction =
     # labels = ['C. Bacillus', 'E. Coli Alt']
@@ -55,10 +51,13 @@ def length_trajectory_plots(data_folder, nbr_simulations, nbr_species, max_time=
     plt.ylabel(r'sum of length of bacteria, $\mu m$')
     plt.xlabel(r'time, $h$')
     plt.legend()
+    plt.savefig(data_folder + os.sep + "length_bact.pdf")
+    plt.savefig(data_folder + os.sep + "length_bact.png")
     plt.show()
 
 
-def distribution_extinction(data_folder, nbr_simulations, nbr_species, max_time):
+def distribution_extinction(data_folder, nbr_simulations, nbr_species,
+                            max_time=None, timestep=1. / 12., labels=None):
     data = collect_data_array(data_folder, nbr_simulations, nbr_species, max_time)
     extinctions = [[] for _ in range(nbr_species)]
     nbr_extinctions = np.zeros((2))
@@ -78,4 +77,6 @@ def distribution_extinction(data_folder, nbr_simulations, nbr_species, max_time)
     plt.ylabel(r'count')
     plt.xlabel(r'fixation time, $h$')
     plt.legend()
+    plt.savefig(data_folder + os.sep + "extinction.pdf")
+    plt.savefig(data_folder + os.sep + "extinctions.png")
     plt.show()

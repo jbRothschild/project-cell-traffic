@@ -5,9 +5,11 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
 from matplotlib.patches import Rectangle
 import imageio
+import itertools
 from pathlib import Path
 
-BACT_COL = {'0': 'r', '1': 'g', '2': 'b', '3': 'c', '4': 'm', '5': 'y', '6': 'k'}
+BACT_COL = {'0': 'r', '1': 'g', '2': 'b', '3': 'c', '4': 'm', '5': 'y',
+            '6': 'k', '7': 'lime'}
 
 
 def convert_line_2_bacteria(line):
@@ -77,7 +79,8 @@ def plot_simulation(exp_dir, sim_nbr):
             bacteria = convert_line_2_bacteria(line)
 
             plt.plot([bacteria['p1'][0], bacteria['p2'][0]], [bacteria['p1'][1],
-                     bacteria['p2'][1]], lw=int(pixels * bacteria['radius']) - 2, solid_capstyle='round',
+                     bacteria['p2'][1]], lw=int(pixels * bacteria['radius']) - 2,
+                     solid_capstyle='round',
                      color=BACT_COL[bacteria['label'][0]], zorder=-1,
                      path_effects=[pe.Stroke(linewidth=int(pixels * bacteria['radius']),
                                              foreground='k'), pe.Normal()]
@@ -120,35 +123,43 @@ def plot_simulation_many_init(exp_dir, sim_nbr):
     init_count = open(agents_file, 'r')
     init_line = init_count.readline()
     nbr_species = 0
-    while init_line:
-        while init_line != "\n":
-            nbr_species += 1
+    while init_line != "\n":
+        nbr_species += 1
+        #print(init_line)
+        init_line = init_count.readline()
     init_count.close()
 
     agents = open(agents_file, 'r')
     line = agents.readline()
 
     number_plot = 0
-    cmap = plt.cm.gist_ncar
+    vals = np.linspace(0, 1, nbr_species)
+    np.random.shuffle(vals)
+    cmap = plt.cm.colors.ListedColormap(plt.cm.gist_ncar(vals))
+    #cmap = plt.cm.gist_ncar
     while line:
         width = environment['CHANNEL_WIDTH']
         height = environment['CHANNEL_HEIGHT']
+        resize = 2.0
+        pixels = 120. / resize
+
         plt.figure(figsize=(width / 2., height / 2.))
         ax = plt.axes()
-        ax.set_prop_cycle(rcsetup.cycler('color', cmap(nbr_species)))
+        #ax.set_prop_cycle(plt.rcsetup.cycler('color', cmap())
         seen = set()
         colors = list(itertools.takewhile(lambda x: x not in seen and not seen.add(x), (tuple(item['color']) for item in ax._get_lines.prop_cycler)))
         plt.ylim([0, height])
         plt.xlim([0 - 3.0, width + 3.0])
         while line != "\n":
             bacteria = convert_line_2_bacteria(line)
-
             plt.plot([bacteria['p1'][0], bacteria['p2'][0]], [bacteria['p1'][1],
-                     bacteria['p2'][1]], lw=24, solid_capstyle='round',
-                     color=colors[int(bacteria['label'][:len(str(nbr_species))])],
-                     zorder=-1, path_effects=[
-                                        pe.Stroke(linewidth=26, foreground='k'),
-                                        pe.Normal()]
+                     bacteria['p2'][1]], lw=int(pixels * bacteria['radius']) - 2,
+                     solid_capstyle='round',
+                     # color=colors[int(bacteria['label'][:len(str(nbr_species))])],
+                     color=cmap(int(bacteria['label'][:len(str(nbr_species))]) / nbr_species),
+                     zorder=-1,
+                     path_effects=[pe.Stroke(linewidth=int(pixels * bacteria['radius']),
+                                             foreground='k'), pe.Normal()]
                      )
 
             line = agents.readline()

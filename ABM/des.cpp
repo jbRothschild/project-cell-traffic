@@ -174,14 +174,14 @@ class Environment
     string file_agents;
     string file_data;
     int nbr_strains;
-    static constexpr double CELL_SIZE = 4.0;
+    static constexpr double CELL_SIZE = 8.0;
 
     static constexpr double CHANNEL_WIDTH = 44.0;
     static constexpr double CHANNEL_HEIGHT = 12.0;
 
     static const int NUM_CELLS_WIDTH = 2 + ceil( CHANNEL_WIDTH / CELL_SIZE);
     static const int NUM_CELLS_HEIGHT = 2 + ceil( CHANNEL_HEIGHT / CELL_SIZE);
-
+    ABMagent* grid_[NUM_CELLS_WIDTH][NUM_CELLS_HEIGHT];
 
     Environment(double dt_, double save_time_, string file_param_,
                 string file_agents_, string file_data_)
@@ -225,7 +225,6 @@ class Environment
     void writeSimulationData();
     void writeSimulationParameters();
   private:
-    ABMagent* grid_[NUM_CELLS_WIDTH][NUM_CELLS_HEIGHT];
 };
 
 
@@ -1056,8 +1055,8 @@ int initialize_cells_load(Environment &enviro, string filename, int timepoint)
 int initialize_cells2(Environment &enviro, int SIM_NUM) {
 
   // Initialize the cells
-  EColi bacteria1;
-  EColi bacteria2;
+  BSubt bacteria1;
+  BSubt bacteria2;
   double length1 = bacteria1.max_length/2.0;
   double length2 = bacteria2.max_length/2.0;
   double x1, x2, y1, y2, angle1, angle2;
@@ -1122,15 +1121,131 @@ int initialize_cells2(Environment &enviro, int SIM_NUM) {
   return 2;
 }
 
+int initialize_N_strains(Environment &enviro, int SIM_NUM, int nbr_strains_WT,
+                         int nbr_strains_A22, int nbr_strains_bsub) {
+
+  // Initialize the cells
+  EColi ecoliWT;
+  EColiA22 ecoliA22;
+  BSubt bsubt;
+  ABMagent* agent;
+  double x, y, angle, length;
+  bool intersect = true;
+  bool check_intersect;
+  mt19937 cell_placement(SIM_NUM);
+
+  uniform_real_distribution<double> x_dist(0 , enviro.CHANNEL_WIDTH);
+  uniform_real_distribution<double> y_WT_dist(ecoliWT.max_length/2.0,
+                         enviro.CHANNEL_HEIGHT - ecoliWT.max_length/2.0);
+  uniform_real_distribution<double> y_A22_dist(ecoliA22.max_length/2,
+                         enviro.CHANNEL_HEIGHT - ecoliA22.max_length/2);
+  uniform_real_distribution<double> init_angle(0, 2*PI);
+
+
+  for (int i = 0 ; i < nbr_strains_WT; i++){
+    length = 2.0; // ecoliWT.max_length/2.0;
+    intersect = true;
+    while (intersect)
+    {
+       intersect = false;
+       angle = init_angle(cell_placement);
+       x = x_dist(cell_placement);
+       y = y_WT_dist(cell_placement);
+       for (int x = 1; x < enviro.NUM_CELLS_WIDTH; x++)
+       {
+         for (int y = 1; y < enviro.NUM_CELLS_HEIGHT; y++)
+         {
+           agent = enviro.grid_[x][y];
+           while (agent != NULL)
+           {
+             check_intersect= pointsIntersect(x + length / 2 * cos(angle),
+                                              x - length / 2 * cos(angle),
+                                              agent->x + agent->length / 2 * cos(agent->angle),
+                                              agent->x - agent->length / 2 * cos(agent->angle),
+                                              y + length / 2 * sin(angle),
+                                              y - length / 2 * sin(angle),
+                                              agent->y + agent->length / 2 * sin(agent->angle),
+                                              agent->y - agent->length / 2 * sin(agent->angle)
+                                             );
+             intersect = (intersect || check_intersect);
+             agent = agent->next_;
+           }
+         }
+       }
+    }
+    ABMagent* newBacteriaPntr = new ABMagent(&enviro, x, y, ecoliWT.radius,
+                                             ecoliWT.max_length,
+                                             ecoliWT.length,
+                                             0.0, 0.0, 0.0, 0.0,
+                                             angle,
+                                             ecoliWT.inertia,
+                                             0.0,
+                                             ecoliWT.growth_rate,
+                                             to_string(i),
+                                             0.0, 0.0, 0.0
+                                            );
+  }
+
+  for (int i = 0 ; i < nbr_strains_A22; i++){
+    length = 2.0; // ecoliA22.max_length/2.0;
+    intersect = true;
+    while (intersect)
+    {
+       intersect = false;
+       angle = init_angle(cell_placement);
+       x = x_dist(cell_placement);
+       y = y_A22_dist(cell_placement);
+       for (int x = 1; x < enviro.NUM_CELLS_WIDTH; x++)
+       {
+         for (int y = 1; y < enviro.NUM_CELLS_HEIGHT; y++)
+         {
+           agent = enviro.grid_[x][y];
+           while (agent != NULL)
+           {
+             check_intersect= pointsIntersect(x + length / 2 * cos(angle),
+                                              x - length / 2 * cos(angle),
+                                              agent->x + agent->length / 2 * cos(agent->angle),
+                                              agent->x - agent->length / 2 * cos(agent->angle),
+                                              y + length / 2 * sin(angle),
+                                              y - length / 2 * sin(angle),
+                                              agent->y + agent->length / 2 * sin(agent->angle),
+                                              agent->y - agent->length / 2 * sin(agent->angle)
+                                             );
+             intersect = (intersect || check_intersect);
+             agent = agent->next_;
+           }
+         }
+       }
+    }
+    ABMagent* newBacteriaPntr = new ABMagent(&enviro, x, y, ecoliA22.radius,
+                                             ecoliA22.max_length,
+                                             ecoliA22.length,
+                                             0.0, 0.0, 0.0, 0.0,
+                                             angle,
+                                             ecoliA22.inertia,
+                                             0.0,
+                                             ecoliA22.growth_rate,
+                                             to_string(nbr_strains_WT + i),
+                                             0.0, 0.0, 0.0
+                                            );
+  }
+
+  enviro.writeSimulationAgents();
+  enviro.nbr_strains = nbr_strains_WT + nbr_strains_A22 + nbr_strains_bsub;
+  enviro.writeSimulationData();
+
+  return enviro.nbr_strains;
+}
+
 
 int main (int argc, char* argv[]) {
 
   // Setup: set the random number generator's seed, initialize our display
   // window.
-  double dt = 0.000025; // in minutes
+  double dt = 0.00025; // in minutes 0.000025
   double save_time = 5.0; // X minutes
   int num_sub_iter = save_time / dt;
-  int num_save_iter = 8 * 60 / ( num_sub_iter * dt );
+  int num_save_iter = 12 * 60 / ( num_sub_iter * dt );
   int num_agents = 0;
 
   //
@@ -1145,10 +1260,11 @@ int main (int argc, char* argv[]) {
   Environment enviro(dt, save_time, sim_param_file, sim_agent_file, sim_data_file);
   enviro.writeSimulationParameters();
 
-  enviro.nbr_strains = initialize_cells2(enviro, SIM_NUM);
+  //enviro.nbr_strains = initialize_cells2(enviro, SIM_NUM);
+  enviro.nbr_strains = initialize_N_strains(enviro, SIM_NUM, 4, 4, 0); // WT, A22, Bsub
 
   //enviro.nbr_strains = initialize_cells_load(enviro, datafolder + "/c_exp_0/sim1.txt", 11);
-  //enviro.nbr_strains = initialize_cells_load_relabel(enviro, datafolder + "/c_exp_0/sim" + argv[2] + ".txt", 864, 3);
+  //enviro.nbr_strains = initialize_cells_load_relabel(enviro, datafolder + "/c_exp_11/sim" + argv[2] + ".txt", 193, 3);
 
   auto start = high_resolution_clock::now();
   // Simulation loop

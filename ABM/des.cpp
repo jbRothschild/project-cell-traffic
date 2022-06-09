@@ -33,7 +33,7 @@ mt19937 generator(rd());
 mt19937 len_generator(rd());
 mt19937 ang_generator(rd());
 
-float ang = 0.005;
+float ang = 0.025;
 float len = 0.05;
 float max_len = 0.1;
 uniform_real_distribution<double> len_distribution(-len, len);
@@ -1245,7 +1245,7 @@ int main (int argc, char* argv[]) {
   double dt = 0.00025; // in minutes 0.000025
   double save_time = 5.0; // X minutes
   int num_sub_iter = save_time / dt;
-  int num_save_iter = 12 * 60 / ( num_sub_iter * dt );
+  int num_save_iter = 14 * 60 / ( num_sub_iter * dt );
   int num_agents = 0;
 
   //
@@ -1261,7 +1261,7 @@ int main (int argc, char* argv[]) {
   enviro.writeSimulationParameters();
 
   //enviro.nbr_strains = initialize_cells2(enviro, SIM_NUM);
-  enviro.nbr_strains = initialize_N_strains(enviro, SIM_NUM, 4, 4, 0); // WT, A22, Bsub
+  enviro.nbr_strains = initialize_N_strains(enviro, SIM_NUM, 2, 0, 0); // WT, A22, Bsub
 
   //enviro.nbr_strains = initialize_cells_load(enviro, datafolder + "/c_exp_0/sim1.txt", 11);
   //enviro.nbr_strains = initialize_cells_load_relabel(enviro, datafolder + "/c_exp_11/sim" + argv[2] + ".txt", 193, 3);

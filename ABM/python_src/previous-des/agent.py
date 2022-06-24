@@ -19,8 +19,8 @@ class Bacteria():
 
     def center_length(self):
         # automatically sets length and center of cell
-        self.center = (self.p1 + self.p2)/2.0
-        self.length = np.linalg.norm(self.p1-self.p2)
+        self.center = (self.p1 + self.p2) / 2.0
+        self.length = np.linalg.norm(self.p1 - self.p2)
 
     def out(self, env):
         # return True if it's out of the simualtion

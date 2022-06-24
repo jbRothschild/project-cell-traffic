@@ -7,18 +7,18 @@ def full_start(exp_dir, nbr_traj, time, timestep):
     return 0
 
 
-def initialized_start(exp_dir, nbr_traj, time, timestep=1./12., labels=None):
+def initialized_start(exp_dir, nbr_traj, time, timestep=1. / 12., labels=None):
     analysis.length_trajectory_plots(exp_dir, nbr_traj, time,
                                      timestep, labels=labels)
     analysis.distribution_extinction(exp_dir, nbr_traj, time,
                                      timestep, labels=labels)
-
+    """
     sim_nbr = [0, 200, 2000]
     for i in range(len(sim_nbr)):
         sim_dir = plotting.plot_simulation(exp_dir, sim_nbr[i])
         # sim_dir = plotting.plot_simulation_many_init(exp_dir, sim_nbr[i])
         plotting.gif_experiment(sim_dir)
-
+    """
     return 0
 
 
@@ -47,15 +47,15 @@ def richness_N_strains(dir_list, bacteria_type, nbr_traj):
     ax2.set_ylabel(r'coefficient of variation, SD($S^*\mathrm{)}/\langle S^* \rangle$', color=color)  # we already handled the x-label with ax1
     ax2.scatter(nbr_init_species, std_over_mean_species, color=color)
     ax2.tick_params(axis='y', labelcolor=color)
-    #ax2.set_ylim(0.0, 1.0)
+    # ax2.set_ylim(0.0, 1.0)
 
-    #plt.xlim([0.0, max_t])
+    # plt.xlim([0.0, max_t])
     plt.xlabel(r'number of initial species, $S$')
     fig.tight_layout()
     filename = bacteria_type + "_n_strain_richness"
     plt.savefig(os.getcwd() + os.sep + 'data' + os.sep + filename + ".pdf")
     plt.savefig(os.getcwd() + os.sep + 'data' + os.sep + filename + ".png")
-    #plt.show()
+    # plt.show()
 
     return av_rich, std_rich
 
@@ -70,10 +70,6 @@ if __name__ == '__main__':
     nbr_traj = 3200
     nbr_spec = 2
     max_time = None
-    for i in [0]:
-        sim_dir = plotting.plot_simulation(exp_dir, i)
-        # sim_dir = plotting.plot_simulation_many_init(exp_dir, sim_nbr[i])
-        plotting.gif_experiment(sim_dir)
 
     N_strains_a22 = [72, 73, 74, 75, 76]
     N_strains_wt = [62, 63, 64, 65, 66]

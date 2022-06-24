@@ -7,3 +7,5 @@
 /Time-lapse-movies
 *.zip
 */data/*
+*.o
+*.pyc

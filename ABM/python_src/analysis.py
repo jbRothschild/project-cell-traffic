@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 import python_src
+from python_src.first_passage import FirstPassage
 
 BACT_COL = {'0': 'r', '1': 'g', '2': 'b', '3': 'c', '4': 'm', '5': 'y', '6': 'k'}
 
@@ -104,12 +105,12 @@ def length_trajectory_plots(data_folder, nbr_simulations, max_time=None,
     #
     #
     fig, ax = plt.subplots(1)
-    ax.hist(data[:, 0, -1], bins=30, color='green', edgecolor='black')
-    ax.hist(data[:, 1, -1], bins=30, color='red', edgecolor='black')
+    ax.hist(data[:, 0, -1] / total_len[:, -1], bins=39, color='green', edgecolor='black', density=True)
+    #ax.hist(data[:, 1, -1], bins=30, color='red', edgecolor='black')
     plt.ylabel(r'count')
     plt.xlabel(r'length bacteria')
     # plt.legend()
-    plt.show()
+    # plt.show()
 
 
 def distribution_extinction(data_folder, nbr_simulations,
@@ -124,12 +125,21 @@ def distribution_extinction(data_folder, nbr_simulations,
             if zeros != []:
                 extinctions[j].append(zeros[0] * timestep)
                 nbr_extinctions[j] += 1
+
+    # print(np.sum(nbr_extinctions)/nbr_simulations) fraction sims with fixation
     fig, ax = plt.subplots(1)
     num_bins = 20
     for j in np.arange(0, nbr_species):
         ax.hist(extinctions[j], num_bins, facecolor=BACT_COL[str(j)], alpha=0.5)  # , label=labels[j])
     ax.set_title(r"distribution extinction times")
-    max_t = np.shape(data)[2] * 1. / 12.
+    max_t = np.shape(data)[2] * timestep
+
+    # Moran fpt
+    times = np.arange(0, max_t + timestep, timestep)
+    moran = FirstPassage(60 * 0.0173, 200, times)
+    _, fpt_dist = moran.model_moran()
+    print(fpt_dist)
+    plt.plot(times, fpt_dist)
     plt.xlim([0.0, max_t])
     plt.yscale('log')
     plt.ylabel(r'count')

@@ -22,6 +22,12 @@ def initialized_start(exp_dir, nbr_traj, time, timestep=1. / 12., labels=None):
     return 0
 
 
+def plot_gif(exp_dir, sim_nbr):
+
+    sim_dir = plotting.plot_simulation(exp_dir, sim_nbr)
+    plotting.gif_experiment(sim_dir)
+
+
 def richness_N_strains(dir_list, bacteria_type, nbr_traj):
     nbr_init_species = []
     av_fraction_species = []
@@ -63,10 +69,12 @@ def richness_N_strains(dir_list, bacteria_type, nbr_traj):
 if __name__ == '__main__':
     exp_nbr = 42
     exp_dir = os.getcwd() + os.sep + 'data' + os.sep + f'c_exp_{exp_nbr}'
+    plot_gif(exp_dir, 5)
     labels = [['E. Coli A22 strain A', 'E. Coli A22 strain B.'],
               ['C. Subtillus', 'E. Coli'],
               ['E. Coli strain A', 'E. Coli strain B'],
               ['E. Coli', 'E. Coli A22']]
+
     nbr_traj = 3200
     nbr_spec = 2
     max_time = None

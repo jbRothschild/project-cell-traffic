@@ -16,6 +16,7 @@
 #include <chrono>
 #include "intersect.hpp"
 #include "bacteria.hpp"
+#include "sampled_distribution.hpp"
 
 #define PI 3.14159265359
 
@@ -1134,7 +1135,14 @@ int initialize_N_strains(Environment &enviro, int SIM_NUM, int nbr_strains_WT,
   bool check_intersect;
   mt19937 cell_placement(SIM_NUM);
 
-  uniform_real_distribution<double> x_dist(0 , enviro.CHANNEL_WIDTH);
+  auto sinFunc = [](double x) {
+      const double x0 = 0.0;
+      const double L = 44.0;
+      return x + 0.75 * L * std::sin( 2. * PI * ( x - x0) / L  - PI / 4.0 ) / ( 2.0 * PI );
+    }; // PDF(x) = 1 + 0.75cos(2 pi (x-x0) / K - pi / 4 )
+
+  //uniform_real_distribution<double> x_dist(0 , enviro.CHANNEL_WIDTH);
+  Sampled_distribution<> x_dist(sinFunc, 0.0, enviro.CHANNEL_WIDTH);
   uniform_real_distribution<double> y_WT_dist(ecoliWT.max_length/2.0,
                          enviro.CHANNEL_HEIGHT - ecoliWT.max_length/2.0);
   uniform_real_distribution<double> y_A22_dist(ecoliA22.max_length/2,
@@ -1245,7 +1253,7 @@ int main (int argc, char* argv[]) {
   double dt = 0.00025; // in minutes 0.000025
   double save_time = 5.0; // X minutes
   int num_sub_iter = save_time / dt;
-  int num_save_iter = 14 * 60 / ( num_sub_iter * dt );
+  int num_save_iter = 12 * 60 / ( num_sub_iter * dt );
   int num_agents = 0;
 
   //
@@ -1260,7 +1268,6 @@ int main (int argc, char* argv[]) {
   Environment enviro(dt, save_time, sim_param_file, sim_agent_file, sim_data_file);
   enviro.writeSimulationParameters();
 
-  //enviro.nbr_strains = initialize_cells2(enviro, SIM_NUM);
   enviro.nbr_strains = initialize_N_strains(enviro, SIM_NUM, 2, 0, 0); // WT, A22, Bsub
 
   //enviro.nbr_strains = initialize_cells_load(enviro, datafolder + "/c_exp_0/sim1.txt", 11);

@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=40
 #SBATCH --ntasks-per-node=40
-#SBATCH --time=12:00:00
+#SBATCH --time=6:00:00
 #SBATCH --job-name=ECvEC
 
 #run this code using jbroths:~$ sbatch *script_name.sh*
@@ -19,4 +19,4 @@ export OMP_NUM_THREADS=1
 
 # mkdir -p ${RESULTS_DIR}/${SIM_DIR}
 
-parallel --joblog slurm-$SLURM_JOBID.log --sshdelay 0.1 --wd $PWD "./des42.o 42 {}" ::: {0..15999}
+parallel --joblog slurm-$SLURM_JOBID.log --sshdelay 0.1 --wd $PWD "./des42.o 102 {}" ::: {0..3199}

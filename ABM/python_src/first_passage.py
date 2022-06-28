@@ -27,36 +27,31 @@ class FirstPassage:
             transition_mat[i, i] = - 2 * i * (self.K - i)
             transition_mat[i + 1, i] = i * (self.K - i)
 
-        transition_mat *= self.r / self.K ** 2
+        transition_mat *= (self.r * self.K) / (self.K ** 2)
 
         #######################################################
         trunc_trans_mat = np.delete(transition_mat, absorption_idx, 0)
         trunc_trans_mat = np.delete(trunc_trans_mat, absorption_idx, 1)
-        inverse = sp.linalg.inv(trunc_trans_mat)
-        """
-        prob_absorption = [- np.dot(np.delete(transition_mat[i, :],
-                                              absorption_idx),
-                                    np.dot(np.delete(init_prob, absorption_idx),
-                                           inverse[i, :])
-                                    ) for i in absorption_idx]
-        mfpt_absorption = [- np.dot(np.delete(transition_mat[i, :],
-                                              absorption_idx),
-                                    np.dot(np.delete(init_prob, absorption_idx),
-                                           np.divide(np.matmul(inverse, inverse),
-                                                     inverse)[i, :]))
-                           for i in absorption_idx]
-        """
-        prob_absorption = [-np.sum((np.delete(transition_mat[i, :], absorption_idx)
-                                    * inverse).T * np.delete(init_prob, absorption_idx)
-                                   ) for i in absorption_idx]
 
-        fpt_dist_absorp = [[-np.sum((np.delete(transition_mat[i, :], absorption_idx)
-                                     * LA.expm(trunc_trans_mat)).T
-                                    * np.delete(init_prob, absorption_idx)
+        inverse = sp.linalg.inv(trunc_trans_mat)
+
+        mfpt = [(np.matmul(inverse, inverse) / inverse)[i, init_state-1] for i in [0, self.K-2]]
+
+        prob_absorption = [-np.dot(np.matmul(np.delete(transition_mat[i, :],
+                                                       absorption_idx),
+                                             inverse),
+                                   np.delete(init_prob, absorption_idx)
+                                   ) for i in absorption_idx
+                           ]
+
+        fpt_dist_absorp = [[-np.dot(np.matmul(np.delete(transition_mat[i, :], absorption_idx),
+                                    LA.expm(trunc_trans_mat * t)),
+                                    np.delete(init_prob, absorption_idx)
                                     ) / prob_absorption[idx] for t in self.times
                             ] for idx, state in enumerate(absorption_idx)]
-        print(prob_absorption)
-        print(fpt_dist_absorp)
+        print(mfpt)
+        #print(prob_absorption)
+        #print(fpt_dist_absorp)
         return prob_absorption, fpt_dist_absorp[0][:]
 
     def model_grow_moran(self):

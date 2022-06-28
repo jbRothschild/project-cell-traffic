@@ -130,17 +130,16 @@ def distribution_extinction(data_folder, nbr_simulations,
     fig, ax = plt.subplots(1)
     num_bins = 20
     for j in np.arange(0, nbr_species):
-        ax.hist(extinctions[j], num_bins, facecolor=BACT_COL[str(j)], alpha=0.5)  # , label=labels[j])
+        ax.hist(extinctions[j], num_bins, facecolor=BACT_COL[str(j)], alpha=0.5, density=True)  # , label=labels[j])
     ax.set_title(r"distribution extinction times")
     max_t = np.shape(data)[2] * timestep
 
     # Moran fpt
-    times = np.arange(0, max_t + timestep, timestep)
-    moran = FirstPassage(60 * 0.0173, 200, times)
+    times = np.arange(0, 3 * max_t + timestep, timestep)
+    moran = FirstPassage(60 * 0.0173, 10, times)
     _, fpt_dist = moran.model_moran()
-    print(fpt_dist)
     plt.plot(times, fpt_dist)
-    plt.xlim([0.0, max_t])
+    # plt.xlim([0.0, max_t])
     plt.yscale('log')
     plt.ylabel(r'count')
     plt.xlabel(r'fixation time, $h$')

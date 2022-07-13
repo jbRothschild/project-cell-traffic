@@ -21,7 +21,7 @@ using namespace std;
 // g++ -std=c++17 -stdlib=libc++ test.cpp -o test.o; ./test.o; python3 test.py
 // ./des.o 42 42
 
-int main()
+void distribution()
 {
     auto logFunc = [](double x) {
         const double k = -1.0;
@@ -41,4 +41,15 @@ int main()
     for (int i = 0; i < 100000; i++) {
       file << dist(gen) << std::endl;
     }
+
+
+void matrix_inverse()
+{
+
+}
+
+
+int main()
+{
+
 }

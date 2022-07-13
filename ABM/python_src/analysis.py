@@ -1,9 +1,9 @@
 import os
-import re
+# bimport re
 import numpy as np
-from pathlib import Path
+# from pathlib import Path
 import matplotlib.pyplot as plt
-import python_src
+# import python_src
 from python_src.first_passage import FirstPassage
 
 BACT_COL = {'0': 'r', '1': 'g', '2': 'b', '3': 'c', '4': 'm', '5': 'y', '6': 'k'}
@@ -106,7 +106,7 @@ def length_trajectory_plots(data_folder, nbr_simulations, max_time=None,
     #
     fig, ax = plt.subplots(1)
     ax.hist(data[:, 0, -1] / total_len[:, -1], bins=39, color='green', edgecolor='black', density=True)
-    #ax.hist(data[:, 1, -1], bins=30, color='red', edgecolor='black')
+    # ax.hist(data[:, 1, -1], bins=30, color='red', edgecolor='black')
     plt.ylabel(r'count')
     plt.xlabel(r'length bacteria')
     # plt.legend()
@@ -137,13 +137,20 @@ def distribution_extinction(data_folder, nbr_simulations,
     # Moran fpt
     times = np.arange(0, 3 * max_t + timestep, timestep)
     moran = FirstPassage(60 * 0.0173, 10, times)
-    _, fpt_dist = moran.model_moran()
-    plt.plot(times, fpt_dist)
+    _, fpt_dist, mfpt, tot_fpt = moran.model_moran()
+    print(np.sum(tot_fpt))
+    plt.plot(times, tot_fpt, 'k', label='moran')
+    moran = FirstPassage(60 * 0.0173, 10, times)
+    _, fpt_dist, mfpt, tot_fpt = moran.model_grow_moran()
+    print(np.sum(tot_fpt))
+    plt.plot(times, tot_fpt, 'b', label='spatial model')
+    print('done')
     # plt.xlim([0.0, max_t])
+    # plt.ylim([0.000001, 1])
     plt.yscale('log')
     plt.ylabel(r'count')
     plt.xlabel(r'fixation time, $h$')
-    # plt.legend()
+    plt.legend()
     plt.savefig(data_folder + os.sep + "extinction.pdf")
     plt.savefig(data_folder + os.sep + "extinctions.png")
     # plt.show()

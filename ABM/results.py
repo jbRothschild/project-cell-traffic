@@ -12,13 +12,12 @@ def initialized_start(exp_dir, nbr_traj, time, timestep=1. / 12., labels=None):
                                      timestep, labels=labels)
     analysis.distribution_extinction(exp_dir, nbr_traj, time,
                                      timestep, labels=labels)
-    """
     sim_nbr = [0, 200, 2000]
+
     for i in range(len(sim_nbr)):
         sim_dir = plotting.plot_simulation(exp_dir, sim_nbr[i])
         # sim_dir = plotting.plot_simulation_many_init(exp_dir, sim_nbr[i])
         plotting.gif_experiment(sim_dir)
-    """
     return 0
 
 
@@ -69,7 +68,7 @@ def richness_N_strains(dir_list, bacteria_type, nbr_traj):
 if __name__ == '__main__':
     exp_nbr = 42
     exp_dir = os.getcwd() + os.sep + 'data' + os.sep + f'c_exp_{exp_nbr}'
-    plot_gif(exp_dir, 5)
+    # plot_gif(exp_dir, 5)
     labels = [['E. Coli A22 strain A', 'E. Coli A22 strain B.'],
               ['C. Subtillus', 'E. Coli'],
               ['E. Coli strain A', 'E. Coli strain B'],
@@ -79,14 +78,17 @@ if __name__ == '__main__':
     nbr_spec = 2
     max_time = None
 
-    N_strains_a22 = [72, 73, 74, 75, 76]
-    N_strains_wt = [62, 63, 64, 65, 66]
+    N_strains_a22 = [103, 113, 72, 73, 74, 75, 76]
+    N_strains_wt = [102, 112, 62, 63, 64, 65, 66]
+    N_strains_a22 = [103, 113]
+    N_strains_wt = [102, 112]
+    N_strains_wt = [62]
     N_strains_vs = [82, 83, 84, 85, 86]
 
     for exp_nbr in N_strains_wt:
         exp_dir = os.getcwd() + os.sep + 'data' + os.sep + f'c_exp_{exp_nbr}'
         initialized_start(exp_dir, nbr_traj, max_time, labels=labels[3])
-
+    """
     for exp_nbr in N_strains_a22:
         exp_dir = os.getcwd() + os.sep + 'data' + os.sep + f'c_exp_{exp_nbr}'
         initialized_start(exp_dir, nbr_traj, max_time, labels=labels[3])
@@ -94,3 +96,4 @@ if __name__ == '__main__':
     richness_N_strains(N_strains_a22, 'A22', nbr_traj)
     richness_N_strains(N_strains_wt, 'WT', nbr_traj)
     richness_N_strains(N_strains_vs, 'VS', nbr_traj)
+    """

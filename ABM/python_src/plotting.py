@@ -3,9 +3,9 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
-from matplotlib.patches import Rectangle
+# from matplotlib.patches import Rectangle
 import imageio
-import itertools
+# import itertools
 from pathlib import Path
 
 BACT_COL = {'0': 'r', '1': 'g', '2': 'b', '3': 'c', '4': 'm', '5': 'y',
@@ -125,7 +125,7 @@ def plot_simulation_many_init(exp_dir, sim_nbr):
     nbr_species = 0
     while init_line != "\n":
         nbr_species += 1
-        #print(init_line)
+        # print(init_line)
         init_line = init_count.readline()
     init_count.close()
 
@@ -136,7 +136,7 @@ def plot_simulation_many_init(exp_dir, sim_nbr):
     vals = np.linspace(0, 1, nbr_species)
     np.random.shuffle(vals)
     cmap = plt.cm.colors.ListedColormap(plt.cm.gist_ncar(vals))
-    #cmap = plt.cm.gist_ncar
+    # cmap = plt.cm.gist_ncar
     while line:
         width = environment['CHANNEL_WIDTH']
         height = environment['CHANNEL_HEIGHT']
@@ -145,9 +145,9 @@ def plot_simulation_many_init(exp_dir, sim_nbr):
 
         plt.figure(figsize=(width / 2., height / 2.))
         ax = plt.axes()
-        #ax.set_prop_cycle(plt.rcsetup.cycler('color', cmap())
-        seen = set()
-        colors = list(itertools.takewhile(lambda x: x not in seen and not seen.add(x), (tuple(item['color']) for item in ax._get_lines.prop_cycler)))
+        # ax.set_prop_cycle(plt.rcsetup.cycler('color', cmap())
+        # seen = set()
+        # colors = list(itertools.takewhile(lambda x: x not in seen and not seen.add(x), (tuple(item['color']) for item in ax._get_lines.prop_cycler)))
         plt.ylim([0, height])
         plt.xlim([0 - 3.0, width + 3.0])
         while line != "\n":

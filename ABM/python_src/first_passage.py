@@ -22,6 +22,9 @@ class FirstPassage:
         init_prob = np.zeros(nbr_states)
         init_prob[init_state] = 1.0
         transition_mat = np.zeros((nbr_states, nbr_states))
+        abs_idx = [0, nbr_states - 1]
+        remove_abs = np.ones(nbr_states, dtype=bool)
+        remove_abs[abs_idx] = False
 
         # main matrix elements
         for i in np.arange(1, nbr_states - 1):
@@ -38,18 +41,20 @@ class FirstPassage:
         inverse = sp.linalg.inv(trunc_trans_mat)
 
         mfpt = [-(np.matmul(inverse, inverse) / inverse)[i, init_state - 1] for i in [0, self.K - 2]]
-
+        print(mfpt)
         prob_absorption = [-np.dot(np.matmul(np.delete(transition_mat[i, :],
                                                        abs_idx),
                                              inverse),
                                    np.delete(init_prob, abs_idx)
                                    ) for i in abs_idx
                            ]
+
         fpt_dist_absorp = [[np.dot(np.matmul(np.delete(transition_mat[state, :], abs_idx),
                                              LA.expm(trunc_trans_mat * t)),
                                    np.delete(init_prob, abs_idx)
                                    ) / prob_absorption[idx] for t in self.times
                             ] for idx, state in enumerate(abs_idx)]
+
         """ remove certain rows in exponentiation... is this right?
         fpt_dist_absorp = [[np.dot(np.matmul(transition_mat[state, :],
                                              LA.expm(transition_mat * t)),
@@ -104,8 +109,6 @@ class FirstPassage:
                 # birth
                 birth_idx = index(i - 1, j, self.K)
                 if i > 0:
-                    if (i - 1 + j) == self.K:
-                        print("DUH")
                     row[rxn_count] = idx
                     col[rxn_count] = birth_idx
                     data[rxn_count] = birth(i - 1, j)
@@ -114,8 +117,6 @@ class FirstPassage:
                 # birth
                 birth_idx = index(i, j - 1, self.K)
                 if j > 0:
-                    if (i + j - 1) == self.K:
-                        print("DUH")
                     row[rxn_count] = idx
                     col[rxn_count] = birth_idx
                     data[rxn_count] = birth(j - 1, i)
@@ -153,12 +154,25 @@ class FirstPassage:
                            init_prob[remove_abs]
                                    ) for i in abs_idx
                            ]
-
+        """
         fpt_dist_absorp = [np.matmul(sLA.expm_multiply(trunc_trans_mat,
                                                        (transition_mat[state, remove_abs].toarray()).reshape(-1,),
                                                        start=self.times[0],
                                                        stop=self.times[-1],
                                                        num=len(self.times)),
+                                     np.delete(init_prob, abs_idx))
+                           for idx, state in enumerate(abs_idx)]
+                           """
+        x = sLA.expm_multiply(transition_mat,
+                              (transition_mat[1].toarray()).reshape(-1,),
+                              start=self.times[0],
+                              stop=self.times[-1],
+                              num=120)
+        fpt_dist_absorp = [np.matmul(sLA.expm_multiply(transition_mat,
+                                                       (transition_mat[state].toarray()).reshape(-1,),
+                                                       start=self.times[0],
+                                                       stop=self.times[-1],
+                                                       num=len(self.times))[:, remove_abs],
                                      np.delete(init_prob, abs_idx))
                            for idx, state in enumerate(abs_idx)]
 

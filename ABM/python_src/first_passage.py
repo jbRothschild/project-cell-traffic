@@ -65,9 +65,6 @@ class FirstPassage:
 
     def model_grow_moran(self):
 
-        def index(i, j, N):
-            return int(i * (N + 2) - i * (i + 1) / 2 + j)
-
         def birth(i, j):
             return self.r * i * (1. - (i + j) / self.K)
 
@@ -77,9 +74,14 @@ class FirstPassage:
         def switch(i, j):
             return self.r * i * j / self.K
 
+        def index_grow_moran(i, j, N):
+            return int(i * (N + 2) - i * (i + 1) / 2 + j)
+
+        self.index = index_grow_moran
+
         init_state_i = 1
         init_state_j = 1
-        init_state = index(init_state_i, init_state_j, self.K)
+        init_state = index_grow_moran(init_state_i, init_state_j, self.K)
 
         nbr_states = int((self.K + 1) * (self.K + 2) / 2)
         row = np.zeros(5 * nbr_states, dtype=int)
@@ -89,14 +91,14 @@ class FirstPassage:
         init_prob = np.zeros(nbr_states)
         init_prob[init_state] = 1.0
 
-        abs_idx = []
+        self.abs_idx = []
 
         rxn_count = 0
         for i in np.arange(0, self.K + 1):
             for j in np.arange(0, self.K + 1 - i):
                 idx = index(i, j, self.K)
                 if i == 0 or j == 0:
-                    abs_idx.append(idx)
+                    (self.abs_idx).append(idx)
                     # self
                 row[rxn_count] = idx
                 col[rxn_count] = idx
@@ -134,50 +136,45 @@ class FirstPassage:
                     col[rxn_count] = rxn_decrease_idx
                     data[rxn_count] = switch(i + 1, j - 1)
                     rxn_count += 1
-        transition_mat = sparse.csc_matrix((data, (row, col)), shape=(nbr_states, nbr_states))
-        remove_abs = np.ones(nbr_states, dtype=bool)
-        remove_abs[abs_idx] = False
-        trunc_trans_mat = (transition_mat[remove_abs])[:, remove_abs]
 
-        inverse = sLA.inv(trunc_trans_mat)
+        self.transition_mat = sparse.csc_matrix((data, (row, col)), shape=(nbr_states, nbr_states))
+        self.remove_abs = np.ones(nbr_states, dtype=bool)
+        self.remove_abs[self.abs_idx] = False
+        self.trunc_trans_mat = (transition_mat[self.remove_abs])[:, self.remove_abs]
 
-        # mfpt = [(np.matmul(inverse, inverse) / inverse)[i, init_state - 1] for i in [0, self.K - 2]]
-        mfpt = 0
-
-        prob_absorption = [-np.dot((inverse.T @ transition_mat[i, remove_abs].T).toarray().reshape(-1,),
-                           init_prob[remove_abs]
-                                   ) for i in abs_idx
-                           ]
-        """
-        fpt_dist_absorp = [np.matmul(sLA.expm_multiply(trunc_trans_mat,
-                                                       (transition_mat[state, remove_abs].toarray()).reshape(-1,),
-                                                       start=self.times[0],
-                                                       stop=self.times[-1],
-                                                       num=len(self.times)),
-                                     np.delete(init_prob, abs_idx))
-                           for idx, state in enumerate(abs_idx)]
-        """
-        x = sLA.expm_multiply(transition_mat,
-                              (transition_mat[1].toarray()).reshape(-1,),
-                              start=self.times[0],
-                              stop=self.times[-1],
-                              num=120)
-
-        fpt_dist_absorp = [np.matmul(sLA.expm_multiply(transition_mat,
-                                                       init_prob,
-                                                       start=self.times[0],
-                                                       stop=self.times[-1],
-                                                       num=len(self.times))[:, remove_abs],
-                                    transition_mat[state, remove_abs].toarray().reshape(-1,))
-                           for idx, state in enumerate(abs_idx)]
-
-
-        # Why not normalized??? seems normalized to 24...
-        total_fpt = (np.sum(np.vstack(fpt_dist_absorp), axis=0)).tolist()
-        # total_fpt = (np.sum(np.vstack(fpt_dist_absorp), axis=0) / np.sum(np.sum(np.vstack(fpt_dist_absorp), axis=0))).tolist()
-        fpt_dist_absorp_N = [(x * 0).tolist() if prob_absorption[i] == 0
-                             else (x / prob_absorption[i]).tolist()
-                             for i, x in enumerate(fpt_dist_absorp)]
-        # transition_mat = np.zeros((nbr_states, nbr_states))
+        self.inverse = sLA.inv(self.trunc_trans_mat)
 
         return prob_absorption, fpt_dist_absorp_N, mfpt, total_fpt
+
+        def probability_mfpt(self):
+
+            # mfpt = [(np.matmul(inverse, inverse) / inverse)[i, init_state - 1] for i in [0, self.K - 2]]
+            mfpt = 0
+
+            prob_absorption = [-np.dot((
+                    (self.inverse).T @ self.transition_mat[i, self.remove_abs].T
+                                       ).toarray().reshape(-1,),
+                               init_prob[self.remove_abs]) for i in self.abs_idx
+                              ]
+
+            return mfpt, prob_absorption
+
+        def distribution_absorption(self):
+            fpt_dist_absorp = [np.matmul(sLA.expm_multiply(transition_mat,
+                                                           init_prob,
+                                                           start=self.times[0],
+                                                           stop=self.times[-1],
+                                                           num=len(self.times))[:, remove_abs],
+                                        transition_mat[state, remove_abs].toarray().reshape(-1,))
+                               for idx, state in enumerate(abs_idx)]
+
+
+            # Why not normalized??? seems normalized to 24...
+            total_fpt = (np.sum(np.vstack(fpt_dist_absorp), axis=0)).tolist()
+
+            fpt_dist_absorp_N = [(x * 0).tolist() if prob_absorption[i] == 0
+                                 else (x / prob_absorption[i]).tolist()
+                                 for i, x in enumerate(fpt_dist_absorp)]
+            # transition_mat = np.zeros((nbr_states, nbr_states))
+
+            return fpt_dist_absorp_N, total_fpt

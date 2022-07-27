@@ -4,7 +4,7 @@ import numpy as np
 # from pathlib import Path
 import matplotlib.pyplot as plt
 # import python_src
-from python_src.first_passage import FirstPassage
+from python_src.first_passage import MoranFPT, MoranGrowFPT
 
 BACT_COL = {'0': 'r', '1': 'g', '2': 'b', '3': 'c', '4': 'm', '5': 'y', '6': 'k'}
 
@@ -136,13 +136,13 @@ def distribution_extinction(data_folder, nbr_simulations,
 
     # Moran fpt
     times = np.arange(0, 3 * max_t + timestep, timestep)
-    moran = FirstPassage(60 * 0.0173, 50, times)
-    _, fpt_dist, mfpt, tot_fpt = moran.model_moran()
-    print(np.sum(tot_fpt))
+    moran = MoranFPT(60 * 0.0173, 60, times)
+    prob, mfpt = moran.probability_mfpt(30)
+    fpt_dist, tot_fpt = moran.fpt_distribution(30)
     plt.plot(times, tot_fpt, 'k', label='moran')
-    moran = FirstPassage(60 * 0.0173, 50, times)
-    _, fpt_dist, mfpt, tot_fpt = moran.model_grow_moran()
-    print(np.sum(tot_fpt))
+    moran = MoranGrowFPT(60 * 0.0173, 60, times)
+    prob, mfpt = moran.probability_mfpt(30, 30)
+    fpt_dist, tot_fpt = moran.fpt_distribution(30, 30)
     plt.plot(times, tot_fpt, 'b', label='spatial model')
     print('done')
     # plt.xlim([0.0, max_t])

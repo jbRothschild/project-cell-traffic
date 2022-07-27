@@ -136,11 +136,11 @@ def distribution_extinction(data_folder, nbr_simulations,
 
     # Moran fpt
     times = np.arange(0, 3 * max_t + timestep, timestep)
-    moran = FirstPassage(60 * 0.0173, 10, times)
+    moran = FirstPassage(60 * 0.0173, 50, times)
     _, fpt_dist, mfpt, tot_fpt = moran.model_moran()
     print(np.sum(tot_fpt))
     plt.plot(times, tot_fpt, 'k', label='moran')
-    moran = FirstPassage(60 * 0.0173, 10, times)
+    moran = FirstPassage(60 * 0.0173, 50, times)
     _, fpt_dist, mfpt, tot_fpt = moran.model_grow_moran()
     print(np.sum(tot_fpt))
     plt.plot(times, tot_fpt, 'b', label='spatial model')

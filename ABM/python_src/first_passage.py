@@ -41,7 +41,7 @@ class FirstPassage:
         inverse = sp.linalg.inv(trunc_trans_mat)
 
         mfpt = [-(np.matmul(inverse, inverse) / inverse)[i, init_state - 1] for i in [0, self.K - 2]]
-        print(mfpt)
+
         prob_absorption = [-np.dot(np.matmul(np.delete(transition_mat[i, :],
                                                        abs_idx),
                                              inverse),
@@ -49,20 +49,17 @@ class FirstPassage:
                                    ) for i in abs_idx
                            ]
 
-        fpt_dist_absorp = [[np.dot(np.matmul(np.delete(transition_mat[state, :], abs_idx),
+        fpt_dist_absorp = [[np.dot(np.matmul( LA.expm(transition_mat * t), init_prob)[remove_abs],transition_mat[state, remove_abs]) / prob_absorption[idx] for t in self.times
+                            ] for idx, state in enumerate(abs_idx)]
+
+        """ remove certain rows in exponentiation
+        fpt_dist_absorp_part = [[np.dot(np.matmul(np.delete(transition_mat[state, :], abs_idx),
                                              LA.expm(trunc_trans_mat * t)),
                                    np.delete(init_prob, abs_idx)
                                    ) / prob_absorption[idx] for t in self.times
                             ] for idx, state in enumerate(abs_idx)]
-
-        """ remove certain rows in exponentiation... is this right?
-        fpt_dist_absorp = [[np.dot(np.matmul(transition_mat[state, :],
-                                             LA.expm(transition_mat * t)),
-                                   init_prob
-                                   ) / prob_absorption[idx] for t in self.times
-                            ] for idx, state in enumerate(abs_idx)]
         """
-        tot_fpt = [fpt_dist_absorp[0][i] + fpt_dist_absorp[1][i] for i, ele in enumerate(fpt_dist_absorp[1][:])]
+        tot_fpt = [fpt_dist_absorp[0][i]*prob_absorption[0] + fpt_dist_absorp[1][i]*prob_absorption[1] for i, ele in enumerate(fpt_dist_absorp[1][:])]
 
         return prob_absorption, fpt_dist_absorp, mfpt, tot_fpt
 
@@ -80,8 +77,8 @@ class FirstPassage:
         def switch(i, j):
             return self.r * i * j / self.K
 
-        init_state_i = 5
-        init_state_j = 5
+        init_state_i = 1
+        init_state_j = 1
         init_state = index(init_state_i, init_state_j, self.K)
 
         nbr_states = int((self.K + 1) * (self.K + 2) / 2)
@@ -142,9 +139,6 @@ class FirstPassage:
         remove_abs[abs_idx] = False
         trunc_trans_mat = (transition_mat[remove_abs])[:, remove_abs]
 
-        # sim_idx = [10, 20, 29, 37, 44, 50, 55, 59, 62, 64, 65]
-        # print(transition_mat.A[sim_idx, :][:, sim_idx])
-
         inverse = sLA.inv(trunc_trans_mat)
 
         # mfpt = [(np.matmul(inverse, inverse) / inverse)[i, init_state - 1] for i in [0, self.K - 2]]
@@ -162,19 +156,21 @@ class FirstPassage:
                                                        num=len(self.times)),
                                      np.delete(init_prob, abs_idx))
                            for idx, state in enumerate(abs_idx)]
-                           """
+        """
         x = sLA.expm_multiply(transition_mat,
                               (transition_mat[1].toarray()).reshape(-1,),
                               start=self.times[0],
                               stop=self.times[-1],
                               num=120)
+
         fpt_dist_absorp = [np.matmul(sLA.expm_multiply(transition_mat,
-                                                       (transition_mat[state].toarray()).reshape(-1,),
+                                                       init_prob,
                                                        start=self.times[0],
                                                        stop=self.times[-1],
                                                        num=len(self.times))[:, remove_abs],
-                                     np.delete(init_prob, abs_idx))
+                                    transition_mat[state, remove_abs].toarray().reshape(-1,))
                            for idx, state in enumerate(abs_idx)]
+
 
         # Why not normalized??? seems normalized to 24...
         total_fpt = (np.sum(np.vstack(fpt_dist_absorp), axis=0)).tolist()

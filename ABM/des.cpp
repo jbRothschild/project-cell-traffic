@@ -34,7 +34,7 @@ mt19937 generator(rd());
 mt19937 len_generator(rd());
 mt19937 ang_generator(rd());
 
-float ang = 0.025;
+float ang = 0.0;
 float len = 0.05;
 float max_len = 0.1;
 uniform_real_distribution<double> len_distribution(-len, len);
@@ -177,8 +177,10 @@ class Environment
     int nbr_strains;
     static constexpr double CELL_SIZE = 8.0;
 
-    static constexpr double CHANNEL_WIDTH = 44.0;
-    static constexpr double CHANNEL_HEIGHT = 12.0;
+    // static constexpr double CHANNEL_WIDTH = 44.0;
+    // static constexpr double CHANNEL_HEIGHT = 12.0;
+    static constexpr double CHANNEL_WIDTH = 4.56 * 10;
+    static constexpr double CHANNEL_HEIGHT = 1.10;
 
     static const int NUM_CELLS_WIDTH = 2 + ceil( CHANNEL_WIDTH / CELL_SIZE);
     static const int NUM_CELLS_HEIGHT = 2 + ceil( CHANNEL_HEIGHT / CELL_SIZE);
@@ -223,7 +225,7 @@ class Environment
     int countNumberAgents();
     void save_data();
     void writeSimulationAgents();
-    void writeSimulationData();
+    bool writeSimulationData();
     void writeSimulationParameters();
   private:
 };
@@ -372,7 +374,7 @@ int countDigit(int n)
 }
 
 
-void Environment::writeSimulationData()
+bool Environment::writeSimulationData()
 {
   // Skips line at the end to show new timestep is being saved. Constructor
   // of Environment can reload last saved timestep.
@@ -382,6 +384,7 @@ void Environment::writeSimulationData()
   ABMagent* agent;
   double tot_length [nbr_strains] = {0}; // TODO :replace 2 with number starting strains
   int tot_count [nbr_strains] = {0};
+  bool extinct = false;
   // Data acquisition
   for (int x = 1; x < NUM_CELLS_WIDTH; x++)
   {
@@ -401,11 +404,17 @@ void Environment::writeSimulationData()
   {
     str_len += to_string(tot_length[i]);
     str_len += ",";
+    if (tot_count[i] == 0)
+    {
+      extinct = true;
+    }
   }
   str_len.pop_back();
   str_len += "]";
   fout << str_len << "\n";
   fout.close();
+
+  return extinct;
 }
 
 
@@ -922,35 +931,6 @@ void Environment::handleInteractions()
   }
 }
 
-/*
-bool readDataFile (string fname, int layer) {
-  int dimension = 1 + 2/environmentRES;
-  int row[dimension];
-  char delim = ',';
-  fstream fin;
-  fin.open(fname,ios::in);
-  string temp, line, word;
-  if(layer > NLAYERS) {
-    cout << "Too many input files. Input at most: " << NLAYERS;
-    cout << "input files.";
-    return false;
-  }
-
-  while(fin >> temp) {
-    for (int i = 0; i < dimension; i++) {
-      getline(fin, line);
-      stringstream s(line);
-      for (int j = 0; j < dimension; j++) {
-        getline(s, word, delim);
-  if(word != "") enviro.push(j, i, layer, stoi(word,nullptr,10));
-      }
-    }
-  }
-  fin.close();
-  return true;
-}
-*/
-
 
 int initialize_cells_load_relabel(Environment &enviro, string filename,
                                     int timepoint, int nbr_zeros)
@@ -1054,8 +1034,7 @@ int initialize_cells_load(Environment &enviro, string filename, int timepoint)
 }
 
 int initialize_cells2(Environment &enviro, int SIM_NUM) {
-
-  // Initialize the cells
+  // initialize 2 different cells from different types of cells
   BSubt bacteria1;
   BSubt bacteria2;
   double length1 = bacteria1.max_length/2.0;
@@ -1122,6 +1101,7 @@ int initialize_cells2(Environment &enviro, int SIM_NUM) {
   return 2;
 }
 
+
 int initialize_N_strains(Environment &enviro, int SIM_NUM, int nbr_strains_WT,
                          int nbr_strains_A22, int nbr_strains_bsub) {
 
@@ -1150,8 +1130,9 @@ int initialize_N_strains(Environment &enviro, int SIM_NUM, int nbr_strains_WT,
   uniform_real_distribution<double> init_angle(0, 2*PI);
 
 
+  // placing wild type ecoli
   for (int i = 0 ; i < nbr_strains_WT; i++){
-    length = 2.0; // ecoliWT.max_length/2.0;
+    length = ecoliWT.max_length / 2.0;
     intersect = true;
     while (intersect)
     {
@@ -1159,11 +1140,15 @@ int initialize_N_strains(Environment &enviro, int SIM_NUM, int nbr_strains_WT,
        angle = init_angle(cell_placement);
        x = x_dist(cell_placement);
        y = y_WT_dist(cell_placement);
+
+       // loop to place cells on grid
        for (int x = 1; x < enviro.NUM_CELLS_WIDTH; x++)
        {
          for (int y = 1; y < enviro.NUM_CELLS_HEIGHT; y++)
          {
            agent = enviro.grid_[x][y];
+
+           // check that cells don't intersect
            while (agent != NULL)
            {
              check_intersect= pointsIntersect(x + length / 2 * cos(angle),
@@ -1181,6 +1166,8 @@ int initialize_N_strains(Environment &enviro, int SIM_NUM, int nbr_strains_WT,
          }
        }
     }
+
+    // after checks are passed, actually initialize new cell
     ABMagent* newBacteriaPntr = new ABMagent(&enviro, x, y, ecoliWT.radius,
                                              ecoliWT.max_length,
                                              ecoliWT.length,
@@ -1194,8 +1181,9 @@ int initialize_N_strains(Environment &enviro, int SIM_NUM, int nbr_strains_WT,
                                             );
   }
 
+  // placing A22 mutant of ecoli
   for (int i = 0 ; i < nbr_strains_A22; i++){
-    length = 2.0; // ecoliA22.max_length/2.0;
+    length = 2.0; // ecoliA22.max_length/2.0; // have same init. vol. all cells
     intersect = true;
     while (intersect)
     {
@@ -1246,17 +1234,71 @@ int initialize_N_strains(Environment &enviro, int SIM_NUM, int nbr_strains_WT,
 }
 
 
+int initialize_1boundary(Environment &enviro, int EXP_NUM, int bndry_nbr) {
+  // EXP_NUM has to be nbr_cells + f * 10; f is the fraction cells on the left
+
+  // Initialize the cells
+  EColi bacteria;
+  double length = bacteria.max_length;
+  double x, y;
+  double angle = 0.0;
+  double inertia = 5.0;
+
+  // count number
+  int nbr_cells = enviro.CHANNEL_WIDTH / length;
+  int boundary_pos = EXP_NUM - nbr_cells;
+  int cell_boundary = nbr_cells * boundary_pos / 10;
+  y = 0.55;
+  cout << EXP_NUM  << '\n';
+  cout << nbr_cells << '\n';
+  cout << cell_boundary << '\n';
+  for (int i = 1; i <=cell_boundary; i++)
+  {
+    x = length * (i - 0.5);
+    ABMagent* newBacteriaPntr = new ABMagent(&enviro, x, y,
+                      bacteria.radius,
+                      bacteria.max_length,
+                      length,
+                      0.0, 0.0, 0.0, 0.0,
+                      angle,
+                      bacteria.inertia,
+                      0.0,
+                      bacteria.growth_rate,
+                      to_string(0),
+                      0.0, 0.0, 0.0);
+  }
+
+  for (int i = cell_boundary + 1; i <=nbr_cells; i++)
+  {
+    x = length * (i - 0.5);
+    ABMagent* newBacteriaPntr = new ABMagent(&enviro, x, y,
+                      bacteria.radius,
+                      bacteria.max_length,
+                      length,
+                      0.0, 0.0, 0.0, 0.0,
+                      angle,
+                      bacteria.inertia,
+                      0.0,
+                      bacteria.growth_rate,
+                      to_string(1),
+                      0.0, 0.0, 0.0);
+  }
+  enviro.writeSimulationAgents();
+  enviro.nbr_strains = 2;
+  enviro.writeSimulationData();
+
+  return 2;
+}
+
+
 int main (int argc, char* argv[]) {
 
-  // Setup: set the random number generator's seed, initialize our display
-  // window.
+  // setup simulation parameters
   double dt = 0.00025; // in minutes 0.000025
   double save_time = 5.0; // X minutes
-  int num_sub_iter = save_time / dt;
-  int num_save_iter = 12 * 60 / ( num_sub_iter * dt );
-  int num_agents = 0;
+  int nbr_hours = 12;
 
-  //
+  // metadata of simulations
   string datafolder = "./data";
   int EXP_NUM = atoi(argv[1]);
   int SIM_NUM = atoi(argv[2]);
@@ -1265,42 +1307,60 @@ int main (int argc, char* argv[]) {
   string sim_agent_file = sim_name + "sim" + to_string(SIM_NUM) + ".txt";
   string sim_data_file = sim_name + "sim" + to_string(SIM_NUM) + "_data.txt";
   filesystem::create_directories(sim_name);
+
+  // initialize environment
   Environment enviro(dt, save_time, sim_param_file, sim_agent_file, sim_data_file);
   enviro.writeSimulationParameters();
 
-  enviro.nbr_strains = initialize_N_strains(enviro, SIM_NUM, 2, 0, 0); // WT, A22, Bsub
+  // Josh stuff
+  // enviro.nbr_strains = initialize_N_strains(enviro, SIM_NUM, 2, 0, 0); // WT, A22, Bsub
 
+  // Boundary stuff
+  enviro.nbr_strains = initialize_1boundary(enviro, EXP_NUM, SIM_NUM);
+
+  // Load previous simulation time
   //enviro.nbr_strains = initialize_cells_load(enviro, datafolder + "/c_exp_0/sim1.txt", 11);
   //enviro.nbr_strains = initialize_cells_load_relabel(enviro, datafolder + "/c_exp_11/sim" + argv[2] + ".txt", 193, 3);
 
+  // timing simulation run
   auto start = high_resolution_clock::now();
-  // Simulation loop
+
+  // fixation check
+  bool fixate = false;
+
+  // simulation loop times
+  int num_sub_iter = save_time / dt;
+  int num_save_iter = nbr_hours * 60 / ( num_sub_iter * dt );
+
+  // quick check of simulation
   //num_save_iter = 1;
   //num_sub_iter = 1;
+
+  // simulation loop
   for (int i = 0 ; i < num_save_iter; i++)
   {
     for (int j = 0 ; j < num_sub_iter; j++)
     {
       enviro.handleInteractions();
     }
-    /* uncomment when not on niagara
+    // saving data
+    enviro.writeSimulationAgents();
+    fixate = enviro.writeSimulationData();
+
+    // ends simulation when one species goes extinct
+    if (fixate) {break;} // comment out for multispecies stuff
+
+    /* //uncomment when not on niagara to track progress
     cout << "\n\n-------------\n\n";
     cout << "Number of " << to_string(save_time) << " minutes runs: " << i + 1;
-    */
     // num_agents = enviro.countNumberAgents();
-    enviro.writeSimulationAgents();
-    enviro.writeSimulationData();
+    */
   }
   auto stop = high_resolution_clock::now();
 
   auto duration = duration_cast<seconds>(stop - start);
 
-  // To get the value of duration use the count()
-  // member function on the duration object
   cout << duration.count() << endl;
 
-  // cout << "\n\n-------------\n\n";
-  // Anything here won't be run until the window is closed. Want to cout some
-  // stats or other information? Write a file? Do something else? put it here.
   return 0;
 }

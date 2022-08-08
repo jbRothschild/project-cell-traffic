@@ -130,6 +130,14 @@ class MoranFPT(FirstPassage):
         mfpt = - N * ((1 - x) * np.log(1 - x) + x * np.log(x)) / self.r1
         return x, mfpt
 
+    def FP_mfpt_N(self, x=None, N=None):
+        if N is None:
+            N = self.K
+        if x is None:
+            x = np.linspace(1.0 / N, 1.0 - 1.0 / N, 101)
+        mfpt = -N * np.log(1 - x) * (1 - x) / x
+        return x, mfpt
+
 
 class MoranGrowFPT(FirstPassage):
 
@@ -620,6 +628,12 @@ class TwoBoundaryIntFPT(FirstPassage):
         def one_boundary_move(i, j):
             return self.r2 * (self.K - i - j) / 2.0
 
+        def boundary_move_right(i, j):
+            return self.r2 * (self.K - i - j) / 2.0
+
+        def boundary_move_left(i, j):
+            return self.r2 * (self.K - i - j) / 2.0
+
         # given that i+j <= self.K, this is the total number of states allowed
         self.nbr_states = int((self.K + 1) * (self.K + 2) / 2)
 
@@ -716,7 +730,7 @@ class TwoBoundaryIntFPT(FirstPassage):
                         grow_l_idx = index_grow_moran(i + 1, j)
                         row[rxn_count] = idx
                         col[rxn_count] = grow_l_idx
-                        data[rxn_count] = -(i + 1, j)
+                        data[rxn_count] = one_boundary_move(i + 1, j)
                         rate_out += one_boundary_move(i + 1, j)
                         rxn_count += 1
                         if idx == print_idx:

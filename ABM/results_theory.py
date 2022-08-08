@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 from matplotlib.lines import Line2D
-from scipy.special import erf, erfi
 
 plt.style.use('python_src/custom.mplstyle')
 
@@ -49,14 +48,14 @@ def one_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
     # Fig1D : MFPT as function of N
     fig3, ax3 = plt.subplots(figsize=(4, 3))
     ax3.set_yscale('log')
+    ax2.set_xlim([0.01, 100.])
     ax3.set(title=r"",
             xlabel=r"Total population size, $N$",
             ylabel=r"Mean First-Passage Time, $\tau_N(1/2)$")
 
     # Fig1XX : FPT distribution at x = 1/2
     fig4, ax4 = plt.subplots()
-    ax4.set_yscale('log')
-    ax4.set_xscale('log')
+    ax2.set_xlim([1., 1000.])
     ax4.set(title=r"",
             xlabel=r"Fraction initial boundary position, $x$",
             ylabel=r"Mean First-Passage Time, $\tau_N(x)$")
@@ -105,7 +104,7 @@ def one_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
         X, FP_prob_moran = moran[i].FP_prob()
         ax1.plot(X, FP_prob_moran, linestyle=linestyle[0], color=colors[i])
         X, FP_prob_space = space[i].FP_prob()
-        #ax1.plot(X, FP_prob_space, linestyle=linestyle[1], color=colors[i])
+        # ax1.plot(X, FP_prob_space, linestyle=linestyle[1], color=colors[i])
 
         # Fig 1 C
         ax2.scatter(x, ME_mfpt_space, color=colors[i], marker='x')
@@ -113,7 +112,7 @@ def one_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
         X, FP_mfpt_moran = moran[i].FP_mfpt()
         ax2.plot(X, FP_mfpt_moran, linestyle=linestyle[0], color=colors[i])
         X, FP_mfpt_space = space[i].FP_mfpt()
-        #ax2.plot(X, FP_mfpt_space, linestyle=linestyle[1], color=colors[i])
+        # ax2.plot(X, FP_mfpt_space, linestyle=linestyle[1], color=colors[i])
 
         # Fig 1 D
         prob, mfpt = moran[i].probability_mfpt(int(K / 2))
@@ -143,7 +142,7 @@ def one_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
     ax3.scatter(N, ME_mfpt_moran_N, label=r'ME Moran', marker='o', color=colors[0: len(N)])
     ax3.plot(N_func, FP_mfpt_moran_N, label=r'FP Moran', color='dimgray', linestyle=linestyle[0])
     ax3.scatter(N, ME_mfpt_space_N, label=r'ME Homog.', marker='x', color=colors[0: len(N)])
-    #ax3.plot(N_func, FP_mfpt_space_N, color='black', label=r'FP Homog')
+    # ax3.plot(N_func, FP_mfpt_space_N, color='black', label=r'FP Homog')
     custom_lines3 = [Line2D([0], [0], color='dimgray', linestyle='None', marker='o'),
                      Line2D([0], [0], color='dimgray', linestyle='None', marker='x'),
                      Line2D([0], [0], color='dimgray', linestyle=linestyle[0]),
@@ -274,10 +273,10 @@ def one_boundary_ratio(r1, r2, N, times, cmap_name, filename):
     # N_space = (np.pi / 16.) * np.sqrt(np.pi / 4) * np.exp(N_func / 4) / N_func**(10/2)
 
     # ax3.scatter(N, ME_mfpt_moran_N, label=r'ME Moran', marker='o', color=colors[0: len(N)])
-    #ax3.plot(N_func, FP_mfpt_moran_N, label=r'FP Moran', color='dimgray',)
+    # ax3.plot(N_func, FP_mfpt_moran_N, label=r'FP Moran', color='dimgray',)
     ratio_N = [ME_mfpt_direc_N[j] / val for j, val in enumerate(ME_mfpt_homog_N)]
     ax3.scatter(N, ratio_N, label=r'ME Homog.', marker='D', color=colors[0: len(N)])
-    #ax3.plot(N_func, FP_mfpt_space_N, color='black', label=r'FP Homog')
+    # ax3.plot(N_func, FP_mfpt_space_N, color='black', label=r'FP Homog')
 
     # save figures
     fig1.savefig(filename + '_prob.pdf')
@@ -310,14 +309,14 @@ def two_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
     # Fig1C : MFPT function of x
     fig2, ax2 = plt.subplots(figsize=(4, 3))
     ax2.set_xlim([0.0, 1.0])
-    ax2.set_yscale('log')
+    # ax2.set_yscale('log')
     ax2.set(title=r"",
             xlabel=r"Fraction initial invasion position, $x$",
             ylabel=r"MFPT invasion, $\tau_N(x)$")
 
     # Fig1D : MFPT as function of N
     fig3, ax3 = plt.subplots(figsize=(4, 3))
-    ax3.set_yscale('log')
+    # ax3.set_yscale('log')
     ax3.set(title=r"",
             xlabel=r"Total population size, $N$",
             ylabel=r"MFPT, $\tau_N(1/2)$")
@@ -338,7 +337,6 @@ def two_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
         ME_prob_space = []
 
         for j in np.linspace(0, K - 1, 11):
-            print(j)
             x.append(j / (K - 1))
             j = int(np.floor(j))
             k = K - j - 1
@@ -348,7 +346,7 @@ def two_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
             ME_prob_space.append(ME_prob[0])
             ME_mfpt_space.append(ME_mfpt[0])
 
-        ME_prob, ME_mfpt = moran[i].FP_prob(1 / K)
+        ME_prob, ME_mfpt = moran[i].FP_mfpt_N(1 / K)
         ME_mfpt_moran_N.append(ME_mfpt)
 
         # Fig 3 B
@@ -409,9 +407,9 @@ if __name__ == '__main__':
     """
     N = [10, 50, 100]
     N = [x + 1 for x in N]
-    fname = dir + os.sep + 'inv_direc_line'
+    fname = dir + os.sep + 'inv_homog_line'
     cmap_name = 'plasma'
-    two_boundary_comparaison(r1, r2, N, times, cmap_name, fname, TwoBoundaryIntFPT)
+    two_boundary_comparaison(r1, r2, N, times, cmap_name, fname, TwoBoundaryFPT)
     """
     # single = OneBoundaryIntFPT(r1, r2, N[0], times)
     bound = TwoBoundaryFPT(r1, r2, N[0], times)

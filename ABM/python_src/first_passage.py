@@ -1,10 +1,10 @@
 import scipy as sp
 import numpy as np
-import scipy.linalg as LA
 from scipy import sparse
-from scipy.special import erf, erfi, dawsn
-import scipy.sparse.linalg as sLA
 import mpmath
+import scipy.sparse.linalg as sLA
+from scipy.special import erf, erfi  # , dawsn
+# import scipy.linalg as LA
 
 
 class FirstPassage:
@@ -57,7 +57,8 @@ class FirstPassage:
                                                        num=len(self.times)
                                                        )[:, self.remove_abs],
                                      (
-                                     self.transition_mat[state, self.remove_abs]
+                                     self.transition_mat[state,
+                                                         self.remove_abs]
                                      ).toarray().reshape(-1,))
                            for idx, state in enumerate(self.abs_idx)]
 
@@ -99,7 +100,8 @@ class MoranFPT(FirstPassage):
         # main matrix elements
         for i in np.arange(1, self.nbr_states - 1):
             self.transition_mat[i - 1, i] = self.r1 * i * (self.K - i)
-            self.transition_mat[i, i] = - (self.r1 + self.r2) * i * (self.K - i)
+            self.transition_mat[i, i] = (- (self.r1 + self.r2) * i
+                                         * (self.K - i))
             self.transition_mat[i + 1, i] = self.r2 * i * (self.K - i)
         self.transition_mat *= (self.K) / (self.K ** 2)
 
@@ -161,7 +163,7 @@ class MoranGrowFPT(FirstPassage):
         def switch(i, j):
             return self.r * i * j / self.K
 
-        # for external use outside of function, finding the index of a 2 species
+        # for external use outside of function, finding index of a 2 species
         # state.
         self.index = index_grow_moran
 
@@ -186,7 +188,8 @@ class MoranGrowFPT(FirstPassage):
                     # self
                 row[rxn_count] = idx
                 col[rxn_count] = idx
-                data[rxn_count] = - birth(i, j) - birth(j, i) - 2 * switch(i, j)
+                data[rxn_count] = (- birth(i, j) - birth(j, i)
+                                   - 2 * switch(i, j))
                 rxn_count += 1
 
                 # birth
@@ -287,6 +290,12 @@ class OneBoundaryFPT(FirstPassage):
 
         return
 
+    def force(self, x):
+        return 2 * self.K * (2 * x - 1)
+
+    def potential(self, x):
+        return - 2 * self.K * (x**2 - x)
+
     def FP_prob(self, x=None, N=None):
         if N is None:
             N = self.K
@@ -308,7 +317,8 @@ class OneBoundaryFPT(FirstPassage):
                 )
         """
         mfpt = (- 2. * np.pi * erf(np.sqrt(N / 4.) * (1. - 2. * x))
-                * (2. / np.sqrt(np.pi)) * np.exp((np.sqrt(N / 4.) * (1. - 2. * x)) ** 2)
+                * (2. / np.sqrt(np.pi)) * np.exp((np.sqrt(N / 4.)
+                * (1. - 2. * x)) ** 2)
                 * dawsn(np.sqrt(N / 4.) * (1. - 2. * x)) * (1. - 2. * x)
                 + 2. * np.pi * erf(np.sqrt(N / 4.)) * (2. / np.sqrt(np.pi))
                 * np.exp((np.sqrt(N / 4.)) ** 2) * dawsn(np.sqrt(N / 4.))
@@ -318,23 +328,29 @@ class OneBoundaryFPT(FirstPassage):
         if isinstance(N, np.ndarray):
             mfpt += (N * (1. - 2. * x) ** 2 * np.array(
                     [float(mpmath.hyp2f2(1., 1., 1.5, 2.,
-                                         n * (1. - 2. * x) ** 2 / 4.)) for n in N]
+                                         n * (1. - 2. * x) ** 2 / 4.))
+                     for n in N]
                                                       )
                      )
             mfpt += (- N
-                     * np.array([float(mpmath.hyp2f2(1., 1., 1.5, 2., n / 4.)) for n in N])
+                     * np.array(
+                         [float(mpmath.hyp2f2(1., 1., 1.5, 2., n / 4.))
+                          for n in N])
                      )
         elif isinstance(x, np.ndarray):
-            mfpt += (N * (1. - 2. * x) ** 2 * np.array(
-                    [float(mpmath.hyp2f2(1., 1., 1.5, 2.,
-                                         N * (1. - 2. * X) ** 2 / 4.)) for X in x]
+            mfpt += (N * (1. - 2. * x) ** 2
+                     * np.array(
+                         [float(mpmath.hyp2f2(1., 1., 1.5, 2.,
+                                              N * (1. - 2. * X) ** 2 / 4.)
+                                ) for X in x]
                                                       )
                      )
             mfpt += (- N * float(mpmath.hyp2f2(1., 1., 1.5, 2., N / 4.))
                      )
         else:
             mfpt += (N * (1. - 2. * x) ** 2
-                     * float(mpmath.hyp2f2(1., 1., 1.5, 2., N * (1. - 2. * x) ** 2 / 4.))
+                     * float(mpmath.hyp2f2(1., 1., 1.5, 2.,
+                                           N * (1. - 2. * x) ** 2 / 4.))
                      )
             mfpt += (- N * float(mpmath.hyp2f2(1., 1., 1.5, 2., N / 4.))
                      )
@@ -371,7 +387,8 @@ class OneBoundaryIntFPT(FirstPassage):
             return self.r1 * i * (i - 1) / (2 * (self.K - 1))
 
         def death(i):
-            return self.r2 * (self.K - i) * (self.K - i - 1) / (2 * (self.K - 1))
+            return self.r2 * (self.K - i) * ((self.K - i - 1)
+                                             / (2 * (self.K - 1)))
 
         # transition matrix
         self.transition_mat = np.zeros((self.nbr_states, self.nbr_states))
@@ -392,6 +409,171 @@ class OneBoundaryIntFPT(FirstPassage):
         self.transition_mat = sparse.csc_matrix(self.transition_mat)
 
         return
+
+    def force(self, x):
+        return 2 * self.K * (2 * x - 1) / (2 * x**2 - 2 * x + 1)
+
+    def potential(self, x):
+        return - 2 * self.K * np.log(2 * x**2 - 2 * x + 1)
+
+    def FP_prob(self, x=None, N=None):
+        if N is None:
+            N = self.K
+        if x is None:
+            x = np.linspace(0, 1, 101)
+        x = [0]
+        P = [0]  # np.zeros(len(x))
+        return x, P
+
+    def FP_mfpt(self, x=None, N=None):
+        if N is None:
+            N = self.K
+        if x is None:
+            x = np.linspace(1.0 / N, 1.0 - 1.0 / N, 101)
+        x = [0]
+        mfpt = [0]  # np.zeros(len(x))
+        return x, mfpt
+
+
+class OneBoundaryFitFPT(FirstPassage):
+
+    def __init__(self, growth_rate1, growth_rate2, carrying_capacity, times):
+        self.r1 = growth_rate1
+        self.r2 = growth_rate2
+        self.K = carrying_capacity
+        self.times = times
+
+        def index(*args):
+            # for 2 state system, devised alternate scheme for indexing the
+            # states, such that i, j are represented by 1 number
+            return args
+
+        # for external use outside of function, finding the index pf the state
+        self.index = index
+
+        # total number of states
+        self.nbr_states = self.K + 1
+
+        # absorbing points of Moran model
+        self.abs_idx = [0, self.nbr_states - 1]
+        self.remove_abs = np.ones(self.nbr_states, dtype=bool)
+        self.remove_abs[self.abs_idx] = False
+
+        # rate definitions
+        def birth(i):
+            return (self.r1 * i
+                    / (2 * (self.r2 * (self.K - i) + self.r1 * i)))
+
+        def death(i):
+            return (self.r2 * (self.K - i)
+                    / (2 * (self.r2 * (self.K - i) + self.r1 * i)))
+
+        # transition matrix
+        self.transition_mat = np.zeros((self.nbr_states, self.nbr_states))
+
+        # main matrix elements
+        for i in np.arange(1, self.nbr_states - 1):
+            self.transition_mat[i - 1, i] = death(i)
+            self.transition_mat[i, i] = - (death(i) + birth(i))
+            self.transition_mat[i + 1, i] = birth(i)
+
+        # truncate transition matrix to not have singular matrix for inverse
+        trunc_trans_mat = np.delete(self.transition_mat, self.abs_idx, 0)
+        trunc_trans_mat = np.delete(trunc_trans_mat, self.abs_idx, 1)
+
+        # inverse and then make it sparse
+        self.inverse = sp.linalg.inv(trunc_trans_mat)
+        self.inverse = sparse.csc_matrix(self.inverse)
+        self.transition_mat = sparse.csc_matrix(self.transition_mat)
+
+        return
+
+    def force(self, x):
+        s = self.r1 / self.r2
+        return 2 * self.K * (2 * x - 1) / (2 * x**2 - 2 * x + 1)
+
+    def potential(self, x):
+        return - 2 * self.K * np.log(2 * x**2 - 2 * x + 1)
+
+    def FP_prob(self, x=None, N=None):
+        if N is None:
+            N = self.K
+        if x is None:
+            x = np.linspace(0, 1, 101)
+        x = [0]
+        P = [0]  # np.zeros(len(x))
+        return x, P
+
+    def FP_mfpt(self, x=None, N=None):
+        if N is None:
+            N = self.K
+        if x is None:
+            x = np.linspace(1.0 / N, 1.0 - 1.0 / N, 101)
+        x = [0]
+        mfpt = [0]  # np.zeros(len(x))
+        return x, mfpt
+
+
+class OneBoundaryIntFitFPT(FirstPassage):
+
+    def __init__(self, growth_rate1, growth_rate2, carrying_capacity, times):
+        self.r1 = growth_rate1
+        self.r2 = growth_rate2
+        self.K = carrying_capacity
+        self.times = times
+
+        def index(*args):
+            # for 2 state system, devised alternate scheme for indexing the
+            # states, such that i, j are represented by 1 number
+            return args
+
+        # for external use outside of function, finding the index pf the state
+        self.index = index
+
+        # total number of states
+        self.nbr_states = self.K + 1
+
+        # absorbing points of Moran model
+        self.abs_idx = [0, self.nbr_states - 1]
+        self.remove_abs = np.ones(self.nbr_states, dtype=bool)
+        self.remove_abs[self.abs_idx] = False
+
+        # rate definitions
+        def birth(i):
+            return (self.r1 * i * (i - 1)
+                    / (2 * (self.K - 1) * (self.r2 * (self.K - i)
+                                           + self.r1 * i)))
+
+        def death(i):
+            return (self.r2 * (self.K - i) * (self.K - i - 1)
+                    / (2 * (self.K - 1) * (self.r2 * (self.K - i)
+                                           + self.r1 * i)))
+
+        # transition matrix
+        self.transition_mat = np.zeros((self.nbr_states, self.nbr_states))
+
+        # main matrix elements
+        for i in np.arange(1, self.nbr_states - 1):
+            self.transition_mat[i - 1, i] = death(i)
+            self.transition_mat[i, i] = - (death(i) + birth(i))
+            self.transition_mat[i + 1, i] = birth(i)
+
+        # truncate transition matrix to not have singular matrix for inverse
+        trunc_trans_mat = np.delete(self.transition_mat, self.abs_idx, 0)
+        trunc_trans_mat = np.delete(trunc_trans_mat, self.abs_idx, 1)
+
+        # inverse and then make it sparse
+        self.inverse = sp.linalg.inv(trunc_trans_mat)
+        self.inverse = sparse.csc_matrix(self.inverse)
+        self.transition_mat = sparse.csc_matrix(self.transition_mat)
+
+        return
+
+    def force(self, x):
+        return 2 * self.K * (2 * x - 1) / (2 * x**2 - 2 * x + 1)
+
+    def potential(self, x):
+        return - 2 * self.K * np.log(2 * x**2 - 2 * x + 1)
 
     def FP_prob(self, x=None, N=None):
         if N is None:
@@ -426,7 +608,7 @@ class TwoBoundaryFPT(FirstPassage):
             return int(args[0] * (self.K + 2) - args[0] * (args[0] + 1) / 2
                        + args[1])
 
-        # for external use outside of function, finding the index of a 2 species
+        # for external use outside of function, finding index of a 2 species
         # state.
         self.index = index_grow_moran
 
@@ -450,7 +632,8 @@ class TwoBoundaryFPT(FirstPassage):
         self.nbr_states = int((self.K + 1) * (self.K + 2) / 2)
 
         # define vectors for constructing sparse transition matrix
-        row = np.zeros(5 * self.nbr_states, dtype=int)  # 5 reactions per state at most
+        # 5 reactions per state at most
+        row = np.zeros(5 * self.nbr_states, dtype=int)
         col = np.zeros(5 * self.nbr_states, dtype=int)
         data = np.zeros(5 * self.nbr_states, dtype=float)
 
@@ -464,7 +647,8 @@ class TwoBoundaryFPT(FirstPassage):
         for i in np.arange(0, self.K + 1):
             for j in np.arange(0, self.K + 1 - i):
                 idx = index_grow_moran(i, j)
-                if (i == 0 and j == 0) or (i == 0 and j == self.K) or (i == self.K and j == 0):
+                if ((i == 0 and j == 0) or (i == 0 and j == self.K) or
+                        (i == self.K and j == 0)):
                     (self.abs_idx).append(idx)
 
                 # 1 boundary only, j moving
@@ -608,7 +792,7 @@ class TwoBoundaryIntFPT(FirstPassage):
             return int(args[0] * (self.K + 2) - args[0] * (args[0] + 1) / 2
                        + args[1])
 
-        # for external use outside of function, finding the index of a 2 species
+        # for external use outside of function, finding index of a 2 species
         # state.
         self.index = index_grow_moran
 
@@ -638,7 +822,8 @@ class TwoBoundaryIntFPT(FirstPassage):
         self.nbr_states = int((self.K + 1) * (self.K + 2) / 2)
 
         # define vectors for constructing sparse transition matrix
-        row = np.zeros(5 * self.nbr_states, dtype=int)  # 5 reactions per state at most
+        # 5 reactions per state at most
+        row = np.zeros(5 * self.nbr_states, dtype=int)
         col = np.zeros(5 * self.nbr_states, dtype=int)
         data = np.zeros(5 * self.nbr_states, dtype=float)
 
@@ -652,7 +837,8 @@ class TwoBoundaryIntFPT(FirstPassage):
         for i in np.arange(0, self.K + 1):
             for j in np.arange(0, self.K + 1 - i):
                 idx = index_grow_moran(i, j)
-                if (i == 0 and j == 0) or (i == 0 and j == self.K) or (i == self.K and j == 0):
+                if ((i == 0 and j == 0) or (i == 0 and j == self.K) or
+                        (i == self.K and j == 0)):
                     (self.abs_idx).append(idx)
 
                 # 1 boundary only, j moving

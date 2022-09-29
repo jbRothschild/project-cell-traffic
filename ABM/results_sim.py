@@ -12,6 +12,11 @@ def initialized_start(exp_dir, nbr_traj, time, timestep=1. / 12., labels=None):
                                      timestep, labels=labels)
     analysis.distribution_extinction(exp_dir, nbr_traj, time,
                                      timestep, labels=labels)
+    """
+    analysis.distribution_extinction(exp_dir, nbr_traj, time,
+                                     timestep, labels=labels)
+    """
+
     sim_nbr = [1, 200, 2000]
 
     for i in range(len(sim_nbr)):
@@ -86,10 +91,29 @@ if __name__ == '__main__':
     N_strains_wt = [25]
     N_strains_vs = [82, 83, 84, 85, 86]
 
+    """
     for exp_nbr in N_strains_wt:
         exp_dir = os.getcwd() + os.sep + 'data' + os.sep + f'c_exp_{exp_nbr}'
         plot_gif(exp_dir, 1)
         initialized_start(exp_dir, nbr_traj, max_time, labels=labels[3])
+    """
+    """
+    initialized_start(os.getcwd() + os.sep + 'data' + os.sep + 'c_exp_112',
+                      3200, max_time, labels=['WT lineage 1', 'WT lineage 2'])
+    initialized_start(os.getcwd() + os.sep + 'data' + os.sep + 'c_exp_113',
+                      3200, max_time, labels=['A22 lineage 1', 'A22 lineage 2'])
+    initialized_start(os.getcwd() + os.sep + 'data' + os.sep + 'c_exp_5',
+                      999, max_time, labels=['A22', 'WT'])
+    """
+    data_folders = [os.getcwd() + os.sep + 'data' + os.sep + 'c_exp_112',
+                    os.getcwd() + os.sep + 'data' + os.sep + 'c_exp_113',
+                    os.getcwd() + os.sep + 'data' + os.sep + 'c_exp_5'
+                    ]
+    nbr_simulations = [3200, 3200, 999]
+    labels = ['WT', 'A22', 'A22-WT']
+    analysis.bar_chart_fixations(os.getcwd() + os.sep + 'data', data_folders,
+                                 nbr_simulations,
+                                 max_time=None, timestep=1. / 12., labels=labels)
     """
     for exp_nbr in N_strains_a22:
         exp_dir = os.getcwd() + os.sep + 'data' + os.sep + f'c_exp_{exp_nbr}'

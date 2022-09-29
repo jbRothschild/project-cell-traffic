@@ -115,7 +115,10 @@ def length_trajectory_plots(data_folder, nbr_simulations, max_time=None,
 
 def distribution_extinction(data_folder, nbr_simulations,
                             max_time=None, timestep=1. / 12., labels=None):
+
     data = collect_data_array(data_folder, nbr_simulations, max_time)
+    # max_t = np.shape(data)[2] * timestep
+    max_t = 12.
     nbr_species = np.shape(data)[1]
     extinctions = [[] for _ in range(nbr_species)]
     nbr_extinctions = np.zeros((nbr_species))
@@ -126,15 +129,16 @@ def distribution_extinction(data_folder, nbr_simulations,
                 extinctions[j].append(zeros[0] * timestep)
                 nbr_extinctions[j] += 1
 
-    # print(np.sum(nbr_extinctions)/nbr_simulations) fraction sims with fixation
+    # figure for distribution of each species extinction times
     fig, ax = plt.subplots(1)
     num_bins = 20
     for j in np.arange(0, nbr_species):
-        ax.hist(extinctions[j], num_bins, facecolor=BACT_COL[str(j)], alpha=0.5, density=True)  # , label=labels[j])
-    ax.set_title(r"distribution extinction times")
-    max_t = np.shape(data)[2] * timestep
+        ax.hist(extinctions[j], num_bins, facecolor=BACT_COL[str(j)], alpha=0.5, density=True, label=labels[j])
+        ax.axvline(np.mean(extinctions[j]), color=BACT_COL[str(j)], linestyle='dashed', linewidth=1)
+    ax.set_title(r"distribution fixation times")
 
     # Moran fpt
+    """
     times = np.arange(0, 3 * max_t + timestep, timestep)
     moran = MoranFPT(60 * 0.0173, 60, times)
     prob, mfpt = moran.probability_mfpt(30)
@@ -144,13 +148,120 @@ def distribution_extinction(data_folder, nbr_simulations,
     prob, mfpt = moran.probability_mfpt(30, 30)
     fpt_dist, tot_fpt = moran.fpt_distribution(30, 30)
     plt.plot(times, tot_fpt, 'b', label='spatial model')
-    print('done')
-    # plt.xlim([0.0, max_t])
     # plt.ylim([0.000001, 1])
+    """
+    plt.xlim([0.0, max_t])
     plt.yscale('log')
-    plt.ylabel(r'count')
+    plt.ylabel(r'probability')
     plt.xlabel(r'fixation time, $h$')
     plt.legend()
-    plt.savefig(data_folder + os.sep + "extinction.pdf")
-    plt.savefig(data_folder + os.sep + "extinctions.png")
+    plt.savefig(data_folder + os.sep + "fixations.pdf")
+    plt.savefig(data_folder + os.sep + "fixations.png")
     # plt.show()
+
+    # figure for fixation vs coexistence
+    fig, ax = plt.subplots(1)
+    cat_ext = [y for x in extinctions for y in x]
+    fig, ax = plt.subplots(1)
+    ax.hist(cat_ext, num_bins, facecolor='gray', alpha=0.5, density=True)
+    ax.axvline(np.mean(cat_ext), color='gray', linestyle='dashed', linewidth=1)
+    ax.set_title(r"distribution fixation times")
+    max_t = np.shape(data)[2] * timestep
+
+    plt.xlim([0.0, max_t])
+    plt.yscale('log')
+    plt.ylabel(r'probability')
+    plt.xlabel(r'fixation time, $h$')
+    plt.legend()
+    plt.savefig(data_folder + os.sep + "fixation_cat.pdf")
+    plt.savefig(data_folder + os.sep + "fixation_cat.png")
+    # plt.show()
+
+    # figure for fixation vs coexistence
+
+    return
+
+
+def bar_chart_fixations(sim_dir, data_folders, nbr_simulations,
+                        max_time=None, timestep=1. / 12., labels=None):
+    # bar chart specifications
+    ind = np.flip(np.arange(len(data_folders)))
+    width = 0.25
+
+    # find probabilities for all fixations
+    fix_prob = []
+    fix_coex_prob = []
+    exp_fix = [[0.23, 0.08, 0.69], [0.37, 0.23, 0.40], [0.02, 0.7, 0.28]]
+    exp_fix_coex = [[0.31, 0.69], [0.6, 0.4], [0.72, 0.28]]
+    for i, dfolder in enumerate(data_folders):
+        fix = fix_vs_coexi(dfolder, nbr_simulations[i], max_time)
+        fix_prob.append(list(fix))
+        fix_coex_prob.append([np.sum(fix[:-1]), fix[-1]])
+
+        # placeholder experiments
+
+    # fixation vs coexistence
+    fig, ax = plt.subplots(1, 1)
+
+    # sim
+    ax.barh(y=ind - width / 2, width=np.array(fix_coex_prob)[:, 0], height=width, label='fixation', color='lightgrey', edgecolor=None)
+    ax.bar_label(ax.containers[0], label_type='center')
+    ax.barh(y=ind - width / 2, width=np.array(fix_coex_prob)[:, 1], height=width, left=np.array(fix_coex_prob)[:, 0], label='coexistence', color='dimgrey', edgecolor=None)
+    ax.bar_label(ax.containers[1], label_type='center')
+    # exp
+    ax.barh(y=ind + width / 2, width=np.array(exp_fix_coex)[:, 0], height=width, color='lightgrey', edgecolor=None)
+    ax.bar_label(ax.containers[2], label_type='center')
+    ax.barh(y=ind + width / 2, width=np.array(exp_fix_coex)[:, 1], height=width, left=np.array(exp_fix_coex)[:, 0], color='dimgrey', edgecolor=None)
+    ax.bar_label(ax.containers[3], label_type='center')
+    ax.barh(y=ind + width / 2, width=[1.0] * len(data_folders), height=width, fill=False, edgecolor='k', label='experiment')
+    ax.set_xlim([0.0, 1.0])
+    plt.setp(ax, yticks=ind, yticklabels=labels)
+    plt.xlabel(r'Probability')
+    plt.legend()
+    plt.savefig(sim_dir + os.sep + "coex_prob.pdf")
+    plt.savefig(sim_dir + os.sep + "coex_prob.png")
+
+    fig, ax = plt.subplots(1, 1)
+    # sim
+    bot = 0
+    for j in np.arange(np.shape(np.array(fix_prob))[1] - 1):
+        ax.barh(y=ind - width / 2, width=np.array(fix_prob)[:, j], height=width, left=bot, color=BACT_COL[str(j)], edgecolor=None)
+        bot += np.array(fix_prob)[:, j]
+        ax.bar_label(ax.containers[j], label_type='center')
+    ax.barh(y=ind - width / 2, width=np.array(fix_prob)[:, -1], height=width, color='dimgrey', left=bot, edgecolor=None)
+    ax.bar_label(ax.containers[j + 1], label_type='center')
+    # exp
+    nbr = j + 1
+    bot = 0
+    for j in np.arange(np.shape(np.array(exp_fix))[1] - 1):
+        ax.barh(y=ind + width / 2, width=np.array(exp_fix)[:, j], height=width, left=bot, color=BACT_COL[str(j)], edgecolor=None)
+        ax.bar_label(ax.containers[nbr + j], label_type='center')
+        bot += np.array(exp_fix)[:, j]
+    ax.barh(y=ind + width / 2, width=np.array(exp_fix)[:, -1], height=width, left=bot, label='coexistence', color='dimgrey', edgecolor=None)
+    ax.bar_label(ax.containers[nbr + j + 1], label_type='center')
+    ax.barh(y=ind + width / 2, width=[1.0] * len(data_folders), height=width, fill=False, edgecolor='k', label='experiment')
+    ax.bar_label(ax.containers[nbr + j + 2], label_type='center')
+
+    ax.set_xlim([0.0, 1.0])
+    plt.setp(ax, yticks=ind, yticklabels=labels)
+    plt.xlabel(r'Probability')
+    plt.legend()
+    plt.savefig(sim_dir + os.sep + "fix_prob.pdf")
+    plt.savefig(sim_dir + os.sep + "fix_prob.png")
+
+    return 0
+
+
+def fix_vs_coexi(data_folder, nbr_simulations, max_time):
+    data = collect_data_array(data_folder, nbr_simulations, max_time)
+    nbr_species = np.shape(data)[1]
+    nbr_extinctions = np.zeros((nbr_species))
+    for i in np.arange(0, nbr_simulations):
+        for j in np.arange(0, nbr_species):
+            zeros = np.where(data[i, j, :] == 0.0)[0]
+            if zeros != []:
+                nbr_extinctions[j] += 1.
+    nbr_extinctions /= nbr_simulations
+    nbr_coexistence = 1. - np.sum(nbr_extinctions)
+
+    return np.append(nbr_extinctions, nbr_coexistence)

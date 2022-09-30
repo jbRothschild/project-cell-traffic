@@ -5,6 +5,7 @@ from scipy import sparse
 from scipy.special import erf, erfi, dawsn
 import scipy.sparse.linalg as sLA
 import mpmath
+from scipy.integrate import solve_bvp
 
 
 class FirstPassage:
@@ -297,6 +298,60 @@ class OneBoundaryFPT(FirstPassage):
         return x, P
 
     def FP_mfpt(self, x=None, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
+        if N is None:
+            N = self.K
+
+        def fun(x, y):
+            return np.vstack((y[1], - N * (2 * x - 1) * y[1] - 2 * N))
+
+        def bc(ya, yb):
+            return np.array([ya[0], yb[0]])
+
+        y_guess = np.zeros((2, x_mesh.size))
+
+        res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+        return x, res.sol(x)[0]
+
+    def FP_mfpt_x(self, x_find, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
+        if N is None:
+            N = self.K
+
+            def fun(x, y):
+                return np.vstack((y[1], - N * (2 * x - 1) * y[1] - 2 * N))
+
+            def bc(ya, yb):
+                return np.array([ya[0], yb[0]])
+
+            y_guess = np.zeros((2, x_mesh.size))
+
+            res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+            return x_find, res.sol(x_find)[0]  # [np.where(x == x_find)]
+
+        else:
+            mfpt_N = np.zeros(len(N))
+            for i, n in enumerate(N):
+                def fun(x, y):
+                    return np.vstack((y[1], - n * (2 * x - 1) * y[1] - 2 * n))
+
+                def bc(ya, yb):
+                    return np.array([ya[0], yb[0]])
+
+                y_guess = np.zeros((2, x_mesh.size))
+
+                res = solve_bvp(fun, bc, x_mesh, y_guess)
+                mfpt_N[i] = res.sol(x_find)[0]
+
+            return x_find, mfpt_N
+
+    def FP_mfpt_eq(self, x=None, N=None):
         if N is None:
             N = self.K
         if x is None:
@@ -394,22 +449,81 @@ class OneBoundaryIntFPT(FirstPassage):
         return
 
     def FP_prob(self, x=None, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
         if N is None:
             N = self.K
-        if x is None:
-            x = np.linspace(0, 1, 101)
-        x = [0]
-        P = [0]  # np.zeros(len(x))
-        return x, P
+
+        def fun(x, y):
+            return np.vstack((y[1], - 2 * N * (2 * x - 1) * y[1]
+                              / (2 * x ** 2 - 2 * x + 1)))
+
+        def bc(ya, yb):
+            return np.array([ya[0], yb[0] - 1])
+
+        y_guess = np.zeros((2, x_mesh.size))
+
+        res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+        return x, res.sol(x)[0]
 
     def FP_mfpt(self, x=None, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
         if N is None:
             N = self.K
-        if x is None:
-            x = np.linspace(1.0 / N, 1.0 - 1.0 / N, 101)
-        x = [0]
-        mfpt = [0]  # np.zeros(len(x))
-        return x, mfpt
+
+        def fun(x, y):
+            return np.vstack((y[1], (- 2 * N * (2 * x - 1) * y[1] - 4 * N)
+                              / (2 * x ** 2 - 2 * x + 1)))
+
+        def bc(ya, yb):
+            return np.array([ya[0], yb[0]])
+
+        y_guess = np.zeros((2, x_mesh.size))
+
+        res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+        return x, res.sol(x)[0]
+
+    def FP_mfpt_x(self, x_find, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
+        if N is None:
+            N = self.K
+
+            def fun(x, y):
+                return np.vstack((y[1], (- 2 * n * (2 * x - 1) * y[1] - 4 * n)
+                                  / (2 * x ** 2 - 2 * x + 1)))
+
+            def bc(ya, yb):
+                return np.array([ya[0], yb[0]])
+
+            y_guess = np.zeros((2, x_mesh.size))
+
+            res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+            return x_find, res.sol(x_find)[0]  # [np.where(x == x_find)]
+
+        else:
+            mfpt_N = np.zeros(len(N))
+            for i, n in enumerate(N):
+                def fun(x, y):
+                    return np.vstack((y[1], (- 2 * n * (2 * x - 1) * y[1] - 4 * n)
+                                      / (2 * x ** 2 - 2 * x + 1)))
+
+                def bc(ya, yb):
+                    return np.array([ya[0], yb[0]])
+
+                y_guess = np.zeros((2, x_mesh.size))
+
+                res = solve_bvp(fun, bc, x_mesh, y_guess)
+                mfpt_N[i] = res.sol(x_find)[0]
+
+            return x_find, mfpt_N
 
 
 class TwoBoundaryFPT(FirstPassage):

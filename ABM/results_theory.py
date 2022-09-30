@@ -28,37 +28,31 @@ def one_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
                      Line2D([0], [0], color='dimgray', linestyle=linestyle[1])
                      ]
 
-    legend = ['ME Moran', 'ME Direc.', 'FP Moran']
-    custom_lines1 = [Line2D([0], [0], color='dimgray', linestyle='None', marker='o'),
-                     Line2D([0], [0], color='dimgray', linestyle='None', marker='x')
-                     ]
-
     # Fig1C : MFPT function of x
     fig2, ax2 = plt.subplots(figsize=(4, 3))
     ax2.set_xlim([0.0, 1.0])
     ax2.set_yscale('log')
     ax2.set(title=r"",
             xlabel=r"Fraction initial boundary position, $x$",
-            ylabel=r"Mean First-Passage Time, $\tau_N(x)$")
+            ylabel=r"MFPT, $\tau(x)$")
     custom_lines2 = custom_lines1.copy()
     legend2 = legend.copy()
-    custom_lines2.append(Line2D([0], [0], color='k', linestyle=linestyle[2]))
+    custom_lines2.append(Line2D([0], [0], color='r', linestyle=linestyle[2]))
     legend2.append(r'$\tau_{det}$')
 
     # Fig1D : MFPT as function of N
     fig3, ax3 = plt.subplots(figsize=(4, 3))
     ax3.set_yscale('log')
-    ax2.set_xlim([0.01, 100.])
     ax3.set(title=r"",
             xlabel=r"Total population size, $N$",
-            ylabel=r"Mean First-Passage Time, $\tau_N(1/2)$")
+            ylabel=r"MFPT, $\tau(1/2)$")
 
     # Fig1XX : FPT distribution at x = 1/2
     fig4, ax4 = plt.subplots()
-    ax2.set_xlim([1., 1000.])
+    ax4.set_xlim([1., 1000.])
     ax4.set(title=r"",
             xlabel=r"Fraction initial boundary position, $x$",
-            ylabel=r"Mean First-Passage Time, $\tau_N(x)$")
+            ylabel=r"MFPT, $\tau_N(x)$")
     custom_lines4 = [Line2D([0], [0], color='dimgray', linestyle=linestyle[0], marker='D'),
                      Line2D([0], [0], color='dimgray', linestyle=linestyle[1], marker='o')]
 
@@ -68,10 +62,10 @@ def one_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
     ME_mfpt_space_N = []
     for i, K in enumerate(N):
         # legend
-        #legend.append(r'$N={}$'.format(K))
-        #legend2.append(r'$N={}$'.format(K))
-        #custom_lines1.append(Line2D([0], [0], color=colors[i], linestyle=linestyle[1]))
-        #custom_lines2.append(Line2D([0], [0], color=colors[i], linestyle=linestyle[1]))
+        # legend.append(r'$N={}$'.format(K))
+        # legend2.append(r'$N={}$'.format(K))
+        # custom_lines1.append(Line2D([0], [0], color=colors[i], linestyle=linestyle[1]))
+        # custom_lines2.append(Line2D([0], [0], color=colors[i], linestyle=linestyle[1]))
         #custom_lines4.append(Line2D([0], [0], color=colors[i], linestyle=linestyle[1]))
 
         # define models
@@ -99,20 +93,20 @@ def one_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
             ME_mfpt_space.append(np.dot(ME_prob, ME_mfpt))
 
         # Fig 1 B
-        ax1.scatter(x, ME_prob_space, color=colors[i], marker='x')
-        ax1.scatter(x, ME_prob_moran, color=colors[i], marker='o')
         X, FP_prob_moran = moran[i].FP_prob()
         ax1.plot(X, FP_prob_moran, linestyle=linestyle[0], color=colors[i])
         X, FP_prob_space = space[i].FP_prob()
-        # ax1.plot(X, FP_prob_space, linestyle=linestyle[1], color=colors[i])
+        ax1.plot(X, FP_prob_space, linestyle=linestyle[1], color=colors[i])
+        ax1.scatter(x, ME_prob_space, color=colors[i], marker='x', zorder=2.5)
+        ax1.scatter(x, ME_prob_moran, color=colors[i], marker='o', zorder=2.5)
 
         # Fig 1 C
-        ax2.scatter(x, ME_mfpt_space, color=colors[i], marker='x')
-        ax2.scatter(x, ME_mfpt_moran, color=colors[i], marker='o')
         X, FP_mfpt_moran = moran[i].FP_mfpt()
         ax2.plot(X, FP_mfpt_moran, linestyle=linestyle[0], color=colors[i])
         X, FP_mfpt_space = space[i].FP_mfpt()
-        # ax2.plot(X, FP_mfpt_space, linestyle=linestyle[1], color=colors[i])
+        ax2.plot(X, FP_mfpt_space, linestyle=linestyle[1], color=colors[i])
+        ax2.scatter(x, ME_mfpt_space, color=colors[i], marker='x', zorder=2.5)
+        ax2.scatter(x, ME_mfpt_moran, color=colors[i], marker='o', zorder=2.5)
 
         # Fig 1 D
         prob, mfpt = moran[i].probability_mfpt(int(K / 2))
@@ -131,32 +125,30 @@ def one_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
     # deterministic approximation times
     x_det = np.linspace(0.55, 1.0, 100)
     t_det = - np.log(2 * x_det - 1.0)
-    ax2.plot(x_det, t_det, linestyle=linestyle[2], color='k')
+    ax2.plot(x_det, t_det, linestyle=linestyle[2], color='r')
 
     # Fig 1D: MFPT as a function of N at x/2
-    N_func = np.linspace(10, 125, 100)
-    X, FP_mfpt_moran_N = moran[0].FP_mfpt(x=0.5, N=N_func)
-    X, FP_mfpt_space_N = space[0].FP_mfpt(x=0.5, N=N_func)
+    N_func = np.linspace(10, 500, 100)
+    _, FP_mfpt_moran_N = moran[0].FP_mfpt(x=0.5, N=N_func)
+    _, FP_mfpt_space_N = space[0].FP_mfpt_x(x_find=0.5, N=N_func)
     # N_space = (np.pi / 16.) * np.sqrt(np.pi / 4) * np.exp(N_func / 4) / N_func**(10/2)
 
-    ax3.scatter(N, ME_mfpt_moran_N, label=r'ME Moran', marker='o', color=colors[0: len(N)])
     ax3.plot(N_func, FP_mfpt_moran_N, label=r'FP Moran', color='dimgray', linestyle=linestyle[0])
-    ax3.scatter(N, ME_mfpt_space_N, label=r'ME Homog.', marker='x', color=colors[0: len(N)])
-    # ax3.plot(N_func, FP_mfpt_space_N, color='black', label=r'FP Homog')
+    ax3.plot(N_func, FP_mfpt_space_N, color='black', label=r'FP Inhomog.')
+    ax3.scatter(N, ME_mfpt_moran_N, label=r'ME Moran', marker='o', color=colors[0: len(N)], zorder=2.5)
+    ax3.scatter(N, ME_mfpt_space_N, label=r'ME Homog.', marker='x', color=colors[0: len(N)], zorder=2.5)
     custom_lines3 = [Line2D([0], [0], color='dimgray', linestyle='None', marker='o'),
                      Line2D([0], [0], color='dimgray', linestyle='None', marker='x'),
                      Line2D([0], [0], color='dimgray', linestyle=linestyle[0]),
                      Line2D([0], [0], color='dimgray', linestyle=linestyle[1])
                      ]
-    custom_lines3 = [Line2D([0], [0], color='dimgray', linestyle='None', marker='o'),
-                     Line2D([0], [0], color='dimgray', linestyle='None', marker='x')
-                     ]
     legend3 = legend.copy()
     legend3.pop()
-    ax3.set_ylim([0.01, 1000])
+    ax3.set_ylim([1.0, 1000])
 
     # ax3.plot(N_func, N_space, color='black', label='Asymptotic expansion')
 
+    ax2.set_ylim(0.01, 100)
     ax1.legend(custom_lines1, legend)
     ax2.legend(custom_lines2, legend2)
     ax3.legend(custom_lines3, legend3)
@@ -275,7 +267,7 @@ def one_boundary_ratio(r1, r2, N, times, cmap_name, filename):
     # ax3.scatter(N, ME_mfpt_moran_N, label=r'ME Moran', marker='o', color=colors[0: len(N)])
     # ax3.plot(N_func, FP_mfpt_moran_N, label=r'FP Moran', color='dimgray',)
     ratio_N = [ME_mfpt_direc_N[j] / val for j, val in enumerate(ME_mfpt_homog_N)]
-    ax3.scatter(N, ratio_N, label=r'ME Homog.', marker='D', color=colors[0: len(N)])
+    ax3.scatter(N, ratio_N, label=r'ME Homog.', marker='D', color=colors[0: len(N)], zorder=2.5)
     # ax3.plot(N_func, FP_mfpt_space_N, color='black', label=r'FP Homog')
 
     # save figures
@@ -309,7 +301,7 @@ def two_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
     # Fig1C : MFPT function of x
     fig2, ax2 = plt.subplots(figsize=(4, 3))
     ax2.set_xlim([0.0, 1.0])
-    # ax2.set_yscale('log')
+    ax2.set_yscale('log')
     ax2.set(title=r"",
             xlabel=r"Fraction initial invasion position, $x$",
             ylabel=r"MFPT invasion, $\tau_N(x)$")
@@ -374,14 +366,14 @@ def two_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
     ax3.legend(custom_lines3, legend)
 
     # save figures
-    """
+
     fig1.savefig(filename + '_prob.pdf')
     fig1.savefig(filename + '_prob.png')
     fig2.savefig(filename + '_mfpt.pdf')
     fig2.savefig(filename + '_mfpt.png')
     fig3.savefig(filename + '_N.pdf')
     fig3.savefig(filename + '_N.png')
-    """
+
     return 0
 
 
@@ -391,32 +383,22 @@ if __name__ == '__main__':
     Path(dir).mkdir(parents=True, exist_ok=True)
 
     # theory parameters
-    N = [10, 50, 100, 500, 1000]
+    N = [10, 50, 100, 500]
     # N = [10, 50, 100, 500, 1000]
     times = np.linspace(0.0, 100.0, 10001)
     cmap_name = 'viridis'
     r1 = 1.0
     r2 = 1.0
     """
-    fname = dir + os.sep + 'direc_5'
-    one_boundary_comparaison(r1, r2, N, times, cmap_name, fname, OneBoundaryIntFPT)
+    fname = dir + os.sep + 'homog'
+    # one_boundary_comparaison(r1, r2, N, times, cmap_name, fname, OneBoundaryFPT)
 
     N = [10, 50, 100, 500, 1000]
     fname = dir + os.sep + 'ratio_lin_line'
-    one_boundary_ratio(r1, r2, N, times, cmap_name, fname)
+    # one_boundary_ratio(r1, r2, N, times, cmap_name, fname)
     """
     N = [10, 50, 100]
     N = [x + 1 for x in N]
-    fname = dir + os.sep + 'inv_homog_line'
+    fname = dir + os.sep + 'inv_homog_100'
     cmap_name = 'plasma'
     two_boundary_comparaison(r1, r2, N, times, cmap_name, fname, TwoBoundaryFPT)
-    """
-    # single = OneBoundaryIntFPT(r1, r2, N[0], times)
-    bound = TwoBoundaryFPT(r1, r2, N[0], times)
-
-    # prob1, mfpt1 = single.probability_mfpt(5)
-    prob, mfpt = bound.probability_mfpt(5, 5)
-    """
-
-    # print(prob1)
-    # print(prob, mfpt)

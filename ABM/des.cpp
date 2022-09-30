@@ -1249,9 +1249,8 @@ int initialize_1boundary(Environment &enviro, int EXP_NUM, int bndry_nbr) {
   int boundary_pos = EXP_NUM - nbr_cells;
   int cell_boundary = nbr_cells * boundary_pos / 10;
   y = 0.55;
-  cout << EXP_NUM  << '\n';
-  cout << nbr_cells << '\n';
-  cout << cell_boundary << '\n';
+
+  // add cells
   for (int i = 1; i <=cell_boundary; i++)
   {
     x = length * (i - 0.5);

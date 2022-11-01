@@ -78,7 +78,7 @@ lines.markersize  : 4            # markersize, in points
 # 12pt is the standard value.
 #
 
-font.family         : sans-serif
+# font.family         : sans-serif
 font.sans-serif     : Arial #arial, helvetica
 font.style          : normal
 font.variant        : normal
@@ -97,9 +97,9 @@ font.serif         : cm # cm -> Computer modern
 #axes.hold           : True    # whether to clear the axes by default ons
 axes.linewidth      : 1.0     # edge linewidth
 axes.grid           : False   # display grid or not
-axes.titlesize      : 12   # fontsize of the axes title
+axes.titlesize      : 10   # fontsize of the axes title
 axes.titlepad       : 15   # vertical offset of the axes title
-axes.labelsize      : 12  # fontsize of the x any y labels
+axes.labelsize      : 10  # fontsize of the x any y labels
 axes.labelpad       : 8.0     # space between label and axis
 #axes.labelweight    : normal  # weight of the x and y labels
 #axes.axisbelow      : False   # whether axis gridlines and ticks are below
@@ -120,7 +120,7 @@ xtick.major.width    : 0.75    # major tick width in points
 xtick.minor.width    : 0.75    # minor tick width in points
 xtick.major.pad      : 5      # distance to major tick label in points
 xtick.minor.pad      : 5      # distance to the minor tick label in points
-xtick.labelsize      : 12 # fontsize of the tick labels
+xtick.labelsize      : 10 # fontsize of the tick labels
 #xtick.direction      : in     # direction: in, out, or inout
 
 ytick.major.size     : 6      # major tick size in points
@@ -129,13 +129,13 @@ ytick.major.width    : 0.75    # major tick width in points
 ytick.minor.width    : 0.75    # minor tick width in points
 ytick.major.pad      : 5      # distance to major tick label in points
 ytick.minor.pad      : 5      # distance to the minor tick label in points
-ytick.labelsize      : 12 # fontsize of the tick labels
+ytick.labelsize      : 10 # fontsize of the tick labels
 #ytick.direction      : in     # direction: in, out, or inout
 
 ### SPINES
 
-axes.spines.top    : False
-axes.spines.right  : False
+axes.spines.top    : True
+axes.spines.right  : True
 
 
 ### GRIDS
@@ -149,7 +149,8 @@ legend.fancybox      : False  # if True, use a rounded box for the
                                # legend, else a rectangle
 #legend.isaxes        : True
 #legend.numpoints     : 2      # the number of points in the legend line
-legend.fontsize      : 9
+legend.fontsize      : 7
+legend.title_fontsize : 8
 #legend.borderpad     : 0.5    # border whitespace in fontsize units
 #legend.markerscale   : 1.0    # the relative size of legend markers vs. original
 # the following dimensions are in axes coords

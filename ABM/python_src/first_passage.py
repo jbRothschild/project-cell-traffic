@@ -92,28 +92,32 @@ class FirstPassage:
         return 0
 
     def mfpt_asymp(self, x):
-        
+        mfpt = 0
+        #factor = (np.exp(-(self.potential(self.max_pot) - self.potential(x)) * self.K)
         factor = (np.exp(-np.abs(self.force(x)))
-                  * np.sqrt(self.diffusion(self.max_pot) / self.K))
-        """
-        dif_left = (np.sign(self.force(x)) * np.exp(self.force(0.0))
-                    / (self.B(0.0) * np.abs(self.diffusion(0.0))))
-        
-        dif_righ = (np.sign(-self.force(x)) * np.exp(-self.force(1.0))
-                    / (self.B(1.0) * np.abs(self.diffusion(1.0))))
-        
-        mfpt = (np.sqrt(2 * np.pi / (self.diffusion(self.max_pot) * self.K))
-                * (dif_left.clip(min=0) + dif_righ.clip(min=0))
-                / (1. + (np.abs(self.force(x)) / factor)
-                   + (self.force(x) == 0.0).astype(float)))
-        
-        """
+                      * np.sqrt(self.diffusion(self.max_pot)
+                                / (2 * np.pi * self.K)))
         factor2 = np.abs(self.force(x)) / ((np.abs(self.force(x)) + factor)
                                            * self.K)
+        dif_left = ((1.) # - np.exp(-self.diffusion(0.0) * (self.max_pot - 0.0)))
+                    * ((np.sign(self.force(x)) + (self.force(x) == 0.0))
+                       * np.exp(self.force(0.0))
+                    / (self.B(0.0) * np.abs(self.diffusion(0.0))))) 
+        dif_righ = ((1.) # - np.exp(-self.diffusion(1.0) * (1.0 - self.max_pot)))
+                    * ((np.sign(-self.force(x)) + (self.force(x) == 0.0))
+                       * np.exp(-self.force(1.0))
+                    / (self.B(1.0) * np.abs(self.diffusion(1.0)))))
+        mfpt += (np.sqrt(2 * np.pi / (self.diffusion(self.max_pot) * self.K))
+                 * (dif_left.clip(min=0) + dif_righ.clip(min=0))
+                 / (1. + (np.abs(self.force(x)) / factor)
+                    + (self.force(x) == 0.0).astype(float))) * 2
         
-        mfpt = factor2 * (np.nan_to_num(self.determ_time(x, 0.0), nan=0.0)
-                           + np.nan_to_num(self.determ_time(x, 1.0), nan=0.0))
-        return mfpt * 2 * self.K
+        mfpt += factor2 * ((-self.force(x)).clip(min=0)
+                           * np.nan_to_num(self.determ_time(x, 0.0), nan=0.0)
+                           + (self.force(x)).clip(min=0)
+                           * np.nan_to_num(self.determ_time(x, 1.0), nan=0.0))
+        
+        return mfpt * self.K
 
 
 class MoranFPT(FirstPassage):
@@ -344,7 +348,7 @@ class OneBoundaryFPT(FirstPassage):
         return self.r1 * (2. * x - 1.) / 2.0
 
     def determ_time(self, a, b):
-        #return - np.log(np.abs(2 * a - 1)) + np.log(np.abs(2 * b - 1))
+        #return - np.log(2 * a - 1) + np.log(np.abs(2 * b - 1))
         return - np.log(np.abs(2 * a - 1)) + np.log(np.abs(2 * b - 1))
     
     def potential(self, x):

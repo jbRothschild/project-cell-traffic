@@ -356,7 +356,7 @@ def comparaison_FP_approx(r1, r2, N, times, cmap_name, filename, model):
             ME_mfpt_space.append(np.dot(ME_prob, ME_mfpt))
 
         # Fig 2 A
-        x = np.linspace(0., 1., 100)
+        x = np.linspace(0., 1., 101)
         X, FP_mfpt_space = space[i].FP_mfpt()
         FP_asym_space = space[i].mfpt_asymp(x)
         ax.plot(X, FP_mfpt_space, linestyle=linestyle[0], color=colors[i])
@@ -388,7 +388,7 @@ def comparaison_FP_approx(r1, r2, N, times, cmap_name, filename, model):
                      Line2D([0], [0], color='dimgray', linestyle=linestyle[0]),
                      Line2D([0], [0], color='dimgray', linestyle=linestyle[1])
                      ]
-    legend2 = legend.copy()
+    legend2 = ['Moran', 'Spatial']
     ax2.set_ylim([1.0, 1000])
 
     ax.set_ylim(0.01, 100)
@@ -510,7 +510,7 @@ if __name__ == '__main__':
     Path(dir).mkdir(parents=True, exist_ok=True)
 
     # theory parameters
-    N = [10, 50, 100, 500]
+    N = [10, 50, 100, 500, 1000]
     # N = [10, 50, 100, 500, 1000]
     times = np.linspace(0.0, 100.0, 10001)
     cmap_name = 'viridis'
@@ -519,15 +519,15 @@ if __name__ == '__main__':
 
     fname = dir + os.sep + 'asymp'
     comparaison_FP_approx(r1, r2, N, times, cmap_name, fname, OneBoundaryFPT)
-    """
+    '''
     fname = dir + os.sep + 'homog'
-    # one_boundary_comparaison(r1, r2, N, times, cmap_name, fname,
+    one_boundary_comparaison(r1, r2, N, times, cmap_name, fname,
         OneBoundaryFPT)
 
     N = [10, 50, 100]
     fname = dir + os.sep + 'ratio_lin_line'
     # one_boundary_ratio(r1, r2, N, times, cmap_name, fname)
-    """
+    '''
     """
     N = [10, 50, 100]
     N = [x + 1 for x in N]

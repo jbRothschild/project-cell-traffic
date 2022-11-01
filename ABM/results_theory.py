@@ -1,5 +1,5 @@
-from python_src.first_passage import MoranFPT, OneBoundaryFPT, TwoBoundaryFPT,\
-    OneBoundaryIntFPT  # , TwoBoundaryIntFPT
+from python_src.first_passage import MoranFPT, OneBoundaryFPT,\
+    OneBoundaryIntFPT  # , TwoBoundaryIntFPT, TwoBoundaryFPT
 import os
 from pathlib import Path
 import matplotlib.pyplot as plt

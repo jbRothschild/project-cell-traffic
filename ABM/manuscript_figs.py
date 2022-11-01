@@ -14,12 +14,11 @@ def spatial_vs_moran(r1, r2, N, times, cmap_name, filename, model):
     cmap = matplotlib.cm.get_cmap(cmap_name)
     colors = [cmap(nbr) for nbr in np.linspace(0.0, 1.0, num=len(N))]
     linestyle = [':', '-', '--']
-    
+
     # colour legend
-    col_label = N # ["N={}".format(nbr) for nbr in N]
+    col_label = N  # ["N={}".format(nbr) for nbr in N]
     col_lines = [Line2D([0], [0], color=col) for col in colors]
     cl = plt.legend(col_lines, col_label, loc='lower right')
-    
 
     # Fig1A : P_absorbing
     fig1, ax1 = plt.subplots(figsize=(3.4, 2.5))
@@ -110,7 +109,7 @@ def spatial_vs_moran(r1, r2, N, times, cmap_name, filename, model):
 
     ax3.scatter(N, ME_mfpt_space_N, label=r'ME Homog.', marker='x',
                 color=colors[0: len(N)], zorder=2.5)
-    
+
     # figure limits and legends
     ax3.set_ylim([1.0, 1000])
     ax2.set_ylim(0.1, 100)
@@ -118,7 +117,7 @@ def spatial_vs_moran(r1, r2, N, times, cmap_name, filename, model):
     ax1.legend(custom_lines, legend, title=r'Model')
     ax1.add_artist(cl)
     ax2.legend(det, [r'$\tau_{det}$'])
-    #ax3.legend(custom_lines, legend)
+    # ax3.legend(custom_lines, legend)
 
     # save figures
     fig1.savefig(filename + '_prob.pdf')
@@ -145,4 +144,4 @@ if __name__ == '__main__':
 
     # Figure 1 : spatial vs moran
     fname = dir + os.sep + 'SvM'
-    spatial_vs_moran(r1, r2, N, times, cmap_name, fname, OneBoundaryFPT)
+    spatial_vs_moran(r1, r2, N, times, cmap_name, fname, OneBoundaryIntFPT)

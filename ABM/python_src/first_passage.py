@@ -289,8 +289,20 @@ class OneBoundaryFPT(FirstPassage):
         self.transition_mat = sparse.csc_matrix(self.transition_mat)
 
         return
+    
+    def A(self, x):
+        return self.r1 * (2. * x - 1.) / 2.
+    
+    def timeA(self, x):
+        return - np.log(2. * x - 1.) / self.r1
+    
+    def B(self, x):
+        return self.r1 / 2.
+    
+    def curvature(self, x): 
+        return - 4 * self.K
 
-    def force(self, x):
+    def force(self, x):  # - grad potential
         return 2 * self.K * (2 * x - 1)
 
     def potential(self, x):

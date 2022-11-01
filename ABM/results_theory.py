@@ -1,3 +1,4 @@
+from time import time
 from python_src.first_passage import MoranFPT, OneBoundaryFPT, TwoBoundaryFPT,\
     OneBoundaryIntFPT, TwoBoundaryIntFPT
 import os
@@ -141,7 +142,19 @@ def one_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
     t_det = - np.log(2 * x_det - 1.0)
     ax2.plot(x_det, t_det, linestyle=linestyle[2], color='k')
 
-    # Fig 1D: MFPT as a function of N at x/2
+    # Fig 1D: MFPT as a function of N at max
+    
+    def time_max(model, x_max, N_func):
+        N_func = np.array(N_func)
+        tmax = np.exp(N_func * model.potential(x_max) / model.K)
+        tmax *= np.sqrt( - np.pi * 2 * model.K / (N_func
+                                              * model.curvature(x_max)))
+        tmax *= - (np.exp( - N_func * model.potential(0) / model.K ) 
+                   * model.K / (model.B(0) * model.force(0))
+                   - np.exp( - N_func * model.potential(1) / model.K ) 
+                   * model.K / (model.B(1) * model.force(1)))
+        return tmax / 1000.0
+    
     N_func = np.linspace(10, 125, 100)
     X, FP_mfpt_moran_N = moran[0].FP_mfpt(x=0.5, N=N_func)
     X, FP_mfpt_space_N = space[0].FP_mfpt(x=0.5, N=N_func)
@@ -155,6 +168,7 @@ def one_boundary_comparaison(r1, r2, N, times, cmap_name, filename, model):
     ax3.scatter(N, ME_mfpt_space_N, label=r'ME Homog.', marker='x',
                 color=colors[0: len(N)])
     # ax3.plot(N_func, FP_mfpt_space_N, color='black', label=r'FP Homog')
+    ax3.plot(N, time_max(space[0], 0.5, N), color='black', label=r'asymp')
     custom_lines3 = [
         Line2D([0], [0], color='dimgray', linestyle='None', marker='o'),
         Line2D([0], [0], color='dimgray', linestyle='None', marker='x'),
@@ -418,20 +432,22 @@ if __name__ == '__main__':
     Path(dir).mkdir(parents=True, exist_ok=True)
 
     # theory parameters
-    N = [10, 50, 100, 500, 1000]
+    N = [10, 50, 100, 500]
     # N = [10, 50, 100, 500, 1000]
     times = np.linspace(0.0, 100.0, 10001)
-    cmap_name = 'viridis'
+    cmap_name = 'plasma'
     r1 = 1.0
     r2 = 1.0
-    """
-    fname = dir + os.sep + 'direc_5'
+    
+    fname = dir + os.sep + 'homog'
     one_boundary_comparaison(r1, r2, N, times, cmap_name, fname,
-        OneBoundaryIntFPT)
-
+        OneBoundaryFPT)
+    """
     N = [10, 50, 100, 500, 1000]
     fname = dir + os.sep + 'ratio_lin_line'
     one_boundary_ratio(r1, r2, N, times, cmap_name, fname)
+    """
+    
     """
     N = [10, 50, 100]
     N = [x + 1 for x in N]
@@ -439,6 +455,8 @@ if __name__ == '__main__':
     cmap_name = 'plasma'
     two_boundary_comparaison(r1, r2, N, times, cmap_name, fname,
                              TwoBoundaryFPT)
+    """
+    
     """
     # single = OneBoundaryIntFPT(r1, r2, N[0], times)
     bound = TwoBoundaryFPT(r1, r2, N[0], times)

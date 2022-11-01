@@ -1,15 +1,16 @@
 import scipy as sp
 import numpy as np
 from scipy import sparse
-import mpmath
+from scipy.integrate import solve_bvp
 import scipy.sparse.linalg as sLA
-from scipy.special import erf, erfi  # , dawsn
-# import scipy.linalg as LA
+from scipy.special import erf  # , erfi
 
 
 class FirstPassage:
     def __init__(self):
         self.index = None
+        self.K = 100
+        self.max_pot = 1. / 2.
 
     def probability_mfpt(self, *initialize):
         # initial state of the system
@@ -69,11 +70,59 @@ class FirstPassage:
 
         return fpt_dist_absorp_N, total_fpt
 
+    def B(self, x):
+        return 0
+
+    def A(self, x):
+        return 0
+
+    def determ_time(self, a, b):
+        return - 0
+
+    def potential(self, x):
+        # U = - integral ( 2 A(x) / B(x) )
+        return 0
+
+    def force(self, x):
+        # F = - U' = 2 A(x) / B(x)
+        return 2 * self.A(x) / self.B(x)
+
+    def diffusion(self, x):
+        # D = - U'' = ( 2 A(x) / B(x) )'
+        return 0
+
+    def mfpt_asymp(self, x):
+        mfpt = 0
+        factor = (np.exp(-np.abs(self.force(x)))
+                  * np.sqrt(self.diffusion(self.max_pot)
+                            / (2 * np.pi * self.K)))
+        factor2 = np.abs(self.force(x)) / ((np.abs(self.force(x)) + factor)
+                                           * self.K)
+        dif_left = ((1.)  # -np.exp(-self.diffusion(0.0)*(self.max_pot - 0.0)))
+                    * ((np.sign(self.force(x)) + (self.force(x) == 0.0))
+                       * np.exp(self.force(0.0))
+                    / (self.B(0.0) * np.abs(self.diffusion(0.0)))))
+        dif_righ = ((1.)  # -np.exp(-self.diffusion(1.0)*(1.0 - self.max_pot)))
+                    * ((np.sign(-self.force(x)) + (self.force(x) == 0.0))
+                       * np.exp(-self.force(1.0))
+                    / (self.B(1.0) * np.abs(self.diffusion(1.0)))))
+        mfpt += (np.sqrt(2 * np.pi / (self.diffusion(self.max_pot) * self.K))
+                 * (dif_left.clip(min=0) + dif_righ.clip(min=0))
+                 / (1. + (np.abs(self.force(x)) / factor)
+                    + (self.force(x) == 0.0).astype(float))) * 2
+
+        mfpt += factor2 * ((-self.force(x)).clip(min=0)
+                           * np.nan_to_num(self.determ_time(x, 0.0), nan=0.0)
+                           + (self.force(x)).clip(min=0)
+                           * np.nan_to_num(self.determ_time(x, 1.0), nan=0.0))
+
+        return mfpt * self.K
+
 
 class MoranFPT(FirstPassage):
 
     def __init__(self, growth_rate1, growth_rate2, carrying_capacity, times):
-        self.r1 = growth_rate1
+        self.r1 = growth_rate2
         self.r2 = growth_rate2
         self.K = carrying_capacity
         self.times = times
@@ -246,6 +295,7 @@ class OneBoundaryFPT(FirstPassage):
         self.r2 = growth_rate2
         self.K = carrying_capacity
         self.times = times
+        self.max_pot = 1. / 2.
 
         def index(*args):
             # for 2 state system, devised alternate scheme for indexing the
@@ -302,11 +352,17 @@ class OneBoundaryFPT(FirstPassage):
     def curvature(self, x):
         return - 4 * self.K
 
-    def force(self, x):  # - grad potential
-        return 2 * self.K * (2 * x - 1)
-
     def potential(self, x):
-        return - 2 * self.K * (x**2 - x)
+        # U = - integral ( 2 A(x) / B(x) )
+        return - 2 * (x**2 - x)
+
+    def force(self, x):
+        # F = - U' = 2 A(x) / B(x)
+        return 2. * self.A(x) / self.B(x)
+
+    def diffusion(self, x):
+        # D = - U'' = ( 2 A(x) / B(x) )'
+        return 4. * self.r1
 
     def FP_prob(self, x=None, N=None):
         if N is None:
@@ -318,56 +374,57 @@ class OneBoundaryFPT(FirstPassage):
         return x, P
 
     def FP_mfpt(self, x=None, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
         if N is None:
             N = self.K
-        if x is None:
-            x = np.linspace(1.0 / N, 1.0 - 1.0 / N, 101)
 
-        mfpt = (- 2. * np.pi * erf(np.sqrt(N / 4.) * (1. - 2. * x))
-                * erfi(np.sqrt(N / 4.) * (1. - 2. * x))
-                + 2. * np.pi * erf(np.sqrt(N / 4.)) * erfi(np.sqrt(N / 4.))
-                )
-        """
-        mfpt = (- 2. * np.pi * erf(np.sqrt(N / 4.) * (1. - 2. * x))
-                * (2. / np.sqrt(np.pi)) * np.exp((np.sqrt(N / 4.)
-                * (1. - 2. * x)) ** 2)
-                * dawsn(np.sqrt(N / 4.) * (1. - 2. * x)) * (1. - 2. * x)
-                + 2. * np.pi * erf(np.sqrt(N / 4.)) * (2. / np.sqrt(np.pi))
-                * np.exp((np.sqrt(N / 4.)) ** 2) * dawsn(np.sqrt(N / 4.))
-                )
-        """
+        def fun(x, y):
+            return np.vstack((y[1], - N * (2 * x - 1) * y[1] - 2 * N))
 
-        if isinstance(N, np.ndarray):
-            mfpt += (N * (1. - 2. * x) ** 2 * np.array(
-                    [float(mpmath.hyp2f2(1., 1., 1.5, 2.,
-                                         n * (1. - 2. * x) ** 2 / 4.))
-                     for n in N]
-                                                      )
-                     )
-            mfpt += (- N
-                     * np.array(
-                         [float(mpmath.hyp2f2(1., 1., 1.5, 2., n / 4.))
-                          for n in N])
-                     )
-        elif isinstance(x, np.ndarray):
-            mfpt += (N * (1. - 2. * x) ** 2
-                     * np.array(
-                         [float(mpmath.hyp2f2(1., 1., 1.5, 2.,
-                                              N * (1. - 2. * X) ** 2 / 4.)
-                                ) for X in x]
-                                                      )
-                     )
-            mfpt += (- N * float(mpmath.hyp2f2(1., 1., 1.5, 2., N / 4.))
-                     )
+        def bc(ya, yb):
+            return np.array([ya[0], yb[0]])
+
+        y_guess = np.zeros((2, x_mesh.size))
+
+        res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+        return x, res.sol(x)[0]
+
+    def FP_mfpt_x(self, x_find, N=None):
+        x_mesh = np.linspace(0, 1, 5)
+
+        if N is None:
+            N = self.K
+
+            def fun(x, y):
+                return np.vstack((y[1], - N * (2 * x - 1) * y[1] - 2 * N))
+
+            def bc(ya, yb):
+                return np.array([ya[0], yb[0]])
+
+            y_guess = np.zeros((2, x_mesh.size))
+
+            res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+            return x_find, res.sol(x_find)[0]  # [np.where(x == x_find)]
+
         else:
-            mfpt += (N * (1. - 2. * x) ** 2
-                     * float(mpmath.hyp2f2(1., 1., 1.5, 2.,
-                                           N * (1. - 2. * x) ** 2 / 4.))
-                     )
-            mfpt += (- N * float(mpmath.hyp2f2(1., 1., 1.5, 2., N / 4.))
-                     )
-        mfpt /= 4 * self.r1
-        return x, mfpt
+            mfpt_N = np.zeros(len(N))
+            for i, n in enumerate(N):
+                def fun(x, y):
+                    return np.vstack((y[1], - n * (2 * x - 1) * y[1] - 2 * n))
+
+                def bc(ya, yb):
+                    return np.array([ya[0], yb[0]])
+
+                y_guess = np.zeros((2, x_mesh.size))
+
+                res = solve_bvp(fun, bc, x_mesh, y_guess)
+                mfpt_N[i] = res.sol(x_find)[0]
+
+            return x_find, mfpt_N
 
 
 class OneBoundaryIntFPT(FirstPassage):
@@ -428,23 +485,81 @@ class OneBoundaryIntFPT(FirstPassage):
     def potential(self, x):
         return - 2 * self.K * np.log(2 * x**2 - 2 * x + 1)
 
-    def FP_prob(self, x=None, N=None):
+    def FP_prob(self, x_find=None, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
         if N is None:
             N = self.K
-        if x is None:
-            x = np.linspace(0, 1, 101)
-        x = [0]
-        P = [0]  # np.zeros(len(x))
-        return x, P
+
+        def fun(x, y):
+            return np.vstack((y[1], - N / self.K * self.force(x) * y[1]))
+
+        def bc(ya, yb):
+            return np.array([ya[0], yb[0] - 1])
+
+        y_guess = np.zeros((2, x_mesh.size))
+
+        res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+        return x, res.sol(x)[0]
 
     def FP_mfpt(self, x=None, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
         if N is None:
             N = self.K
-        if x is None:
-            x = np.linspace(1.0 / N, 1.0 - 1.0 / N, 101)
-        x = [0]
-        mfpt = [0]  # np.zeros(len(x))
-        return x, mfpt
+
+        def fun(x, y):
+            return np.vstack((y[1], (- 2 * N * (2 * x - 1) * y[1] - 4 * N)
+                              / (2 * x ** 2 - 2 * x + 1)))
+
+        def bc(ya, yb):
+            return np.array([ya[0], yb[0]])
+
+        y_guess = np.zeros((2, x_mesh.size))
+
+        res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+        return x, res.sol(x)[0]
+
+    def FP_mfpt_x(self, x_find, N=None):
+        x_mesh = np.linspace(0, 1, 5)
+
+        if N is None:
+            N = self.K
+
+            def fun(x, y):
+                return np.vstack((y[1], (- 2 * N * (2 * x - 1) * y[1] - 4 * N)
+                                  / (2 * x ** 2 - 2 * x + 1)))
+
+            def bc(ya, yb):
+                return np.array([ya[0], yb[0]])
+
+            y_guess = np.zeros((2, x_mesh.size))
+
+            res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+            return x_find, res.sol(x_find)[0]  # [np.where(x == x_find)]
+
+        else:
+            mfpt_N = np.zeros(len(N))
+            for i, n in enumerate(N):
+                def fun(x, y):
+                    return np.vstack((y[1], (- 2 * n * (2 * x - 1)
+                                             * y[1] - 4 * n)
+                                      / (2 * x ** 2 - 2 * x + 1)))
+
+                def bc(ya, yb):
+                    return np.array([ya[0], yb[0]])
+
+                y_guess = np.zeros((2, x_mesh.size))
+
+                res = solve_bvp(fun, bc, x_mesh, y_guess)
+                mfpt_N[i] = res.sol(x_find)[0]
+
+            return x_find, mfpt_N
 
 
 class OneBoundaryFitFPT(FirstPassage):
@@ -473,11 +588,11 @@ class OneBoundaryFitFPT(FirstPassage):
 
         # rate definitions
         def birth(i):
-            return (self.r1 * i
+            return (self.r1 * i * self.K
                     / (2 * (self.r2 * (self.K - i) + self.r1 * i)))
 
         def death(i):
-            return (self.r2 * (self.K - i)
+            return (self.r2 * (self.K - i) * self.K
                     / (2 * (self.r2 * (self.K - i) + self.r1 * i)))
 
         # transition matrix
@@ -500,30 +615,98 @@ class OneBoundaryFitFPT(FirstPassage):
 
         return
 
-    def force(self, x):
-        # s = self.r1 / self.r2
-        return 2 * self.K * (2 * x - 1) / (2 * x**2 - 2 * x + 1)
-
     def potential(self, x):
-        return - 2 * self.K * np.log(2 * x**2 - 2 * x + 1)
+        # U = - integral ( 2 A(x) / B(x) )
+        s = self.r1 / self.r2
+        return - 2 * self.K * ((s + 1) * (s - 1)
+                               - 2 * s * np.log((s - 1) * x + 1)) / (s - 1)**2
+
+    def force(self, x):
+        # U = - U' = 2 A(x) / B(x)
+        # s = self.r1 / self.r2
+        return 2 * self.A(x) / self.B(x)
+        # return 2 * self.K * ((s + 1) * x - 1) / ((s - 1) * x + 1)
+
+    def diffusion(self, x):
+        # U = - U'' = ( 2 A(x) / B(x) )'
+        # s = self.r1 / self.r2
+        return 1. / (4 * self.K)
 
     def FP_prob(self, x=None, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
         if N is None:
             N = self.K
-        if x is None:
-            x = np.linspace(0, 1, 101)
-        x = [0]
-        P = [0]  # np.zeros(len(x))
-        return x, P
+
+        def fun(x, y):
+            return np.vstack((y[1], - N * self.force(x) * y[1] / self.K))
+
+        def bc(ya, yb):
+            return np.array([ya[0], yb[0] - 1])
+
+        y_guess = np.zeros((2, x_mesh.size))
+
+        res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+        return x, res.sol(x)[0]
 
     def FP_mfpt(self, x=None, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
         if N is None:
             N = self.K
-        if x is None:
-            x = np.linspace(1.0 / N, 1.0 - 1.0 / N, 101)
-        x = [0]
-        mfpt = [0]  # np.zeros(len(x))
-        return x, mfpt
+
+        def fun(x, y):
+            return np.vstack((y[1], - N * self.force(x) * y[1]
+                              / self.K - (N / (self.K * self.diffusion(x)))))
+
+        def bc(ya, yb):
+            return np.array([ya[0], yb[0]])
+
+        y_guess = np.zeros((2, x_mesh.size))
+
+        res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+        return x, res.sol(x)[0]
+
+    def FP_mfpt_x(self, x_find, N=None):
+        x_mesh = np.linspace(0, 1, 5)
+
+        if N is None:
+            N = self.K
+
+            def fun(x, y):
+                x = np.linspace(0., 1., 101)
+                return np.vstack((y[1], - N / self.K * self.force(x) * y[1]
+                                  - (N / (self.K * self.diffusion(x)))))
+
+            def bc(ya, yb):
+                return np.array([ya[0], yb[0]])
+
+            y_guess = np.zeros((2, x_mesh.size))
+
+            res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+            return x_find, res.sol(x_find)[0]  # [np.where(x == x_find)]
+
+        else:
+            mfpt_N = np.zeros(len(N))
+            for i, n in enumerate(N):
+                def fun(x, y):
+                    return np.vstack((y[1], - n / self.K * self.force(x) * y[1]
+                                      - (n / (self.K * self.diffusion(x)))))
+
+                def bc(ya, yb):
+                    return np.array([ya[0], yb[0]])
+
+                y_guess = np.zeros((2, x_mesh.size))
+
+                res = solve_bvp(fun, bc, x_mesh, y_guess)
+                mfpt_N[i] = res.sol(x_find)[0]
+
+            return x_find, mfpt_N
 
 
 class OneBoundaryIntFitFPT(FirstPassage):
@@ -552,12 +735,12 @@ class OneBoundaryIntFitFPT(FirstPassage):
 
         # rate definitions
         def birth(i):
-            return (self.r1 * i * (i - 1)
+            return (self.r1 * i * (i - 1) * self.K
                     / (2 * (self.K - 1) * (self.r2 * (self.K - i)
                                            + self.r1 * i)))
 
         def death(i):
-            return (self.r2 * (self.K - i) * (self.K - i - 1)
+            return (self.r2 * (self.K - i) * (self.K - i - 1) * self.K
                     / (2 * (self.K - 1) * (self.r2 * (self.K - i)
                                            + self.r1 * i)))
 
@@ -581,29 +764,95 @@ class OneBoundaryIntFitFPT(FirstPassage):
 
         return
 
-    def force(self, x):
-        return 2 * self.K * (2 * x - 1) / (2 * x**2 - 2 * x + 1)
-
     def potential(self, x):
-        return - 2 * self.K * np.log(2 * x**2 - 2 * x + 1)
+        s = self.r1 / self.r2
+        return - 2 * self.K * ((s + 1) * (s - 1)
+                               - 2 * s * np.log((s - 1) * x + 1)) / (s - 1)**2
+
+    def force(self, x):
+        s = self.r1 / self.r2
+        return 2 * self.K * ((s - 1) * x**2 + 2 * x - 1) / (
+            (s + 1) * x**2 - 2 * x + 1)
+
+    def diffusion(self, x):
+        s = self.r1 / self.r2
+        diff = ((s + 1) * x**2 - 2 * x + 1) / (1 + (s - 1) * x)
+        return diff / (4 * self.K)
 
     def FP_prob(self, x=None, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
         if N is None:
             N = self.K
-        if x is None:
-            x = np.linspace(0, 1, 101)
-        x = [0]
-        P = [0]  # np.zeros(len(x))
-        return x, P
+
+        def fun(x, y):
+            return np.vstack((y[1], - N * self.force(x) * y[1] / self.K))
+
+        def bc(ya, yb):
+            return np.array([ya[0], yb[0] - 1])
+
+        y_guess = np.zeros((2, x_mesh.size))
+
+        res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+        return x, res.sol(x)[0]
 
     def FP_mfpt(self, x=None, N=None):
+        x = np.linspace(0., 1., 101)
+        x_mesh = np.linspace(0, 1, 5)
+
         if N is None:
             N = self.K
-        if x is None:
-            x = np.linspace(1.0 / N, 1.0 - 1.0 / N, 101)
-        x = [0]
-        mfpt = [0]  # np.zeros(len(x))
-        return x, mfpt
+
+        def fun(x, y):
+            return np.vstack((y[1], - N * self.force(x) * y[1] / self.K
+                              - (N / (self.K * self.diffusion(x)))))
+
+        def bc(ya, yb):
+            return np.array([ya[0], yb[0]])
+
+        y_guess = np.zeros((2, x_mesh.size))
+
+        res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+        return x, res.sol(x)[0]
+
+    def FP_mfpt_x(self, x_find, N=None):
+        x_mesh = np.linspace(0, 1, 5)
+
+        if N is None:
+            N = self.K
+
+            def fun(x, y):
+                return np.vstack((y[1], - N / self.K * self.force(x) * y[1]
+                                  - (N / (self.K * self.diffusion(x)))))
+
+            def bc(ya, yb):
+                return np.array([ya[0], yb[0]])
+
+            y_guess = np.zeros((2, x_mesh.size))
+
+            res = solve_bvp(fun, bc, x_mesh, y_guess)
+
+            return x_find, res.sol(x_find)[0]  # [np.where(x == x_find)]
+
+        else:
+            mfpt_N = np.zeros(len(N))
+            for i, n in enumerate(N):
+                def fun(x, y):
+                    return np.vstack((y[1], - n / self.K * self.force(x) * y[1]
+                                      - (n / (self.K * self.diffusion(x)))))
+
+                def bc(ya, yb):
+                    return np.array([ya[0], yb[0]])
+
+                y_guess = np.zeros((2, x_mesh.size))
+
+                res = solve_bvp(fun, bc, x_mesh, y_guess)
+                mfpt_N[i] = res.sol(x_find)[0]
+
+            return x_find, mfpt_N
 
 
 class TwoBoundaryFPT(FirstPassage):
@@ -659,8 +908,8 @@ class TwoBoundaryFPT(FirstPassage):
         for i in np.arange(0, self.K + 1):
             for j in np.arange(0, self.K + 1 - i):
                 idx = index_grow_moran(i, j)
-                if ((i == 0 and j == 0) or (i == 0 and j == self.K) or
-                        (i == self.K and j == 0)):
+                if ((i == 0 and j == 0) or (i == 0 and j == self.K)
+                        or (i == self.K and j == 0)):
                     (self.abs_idx).append(idx)
 
                 # 1 boundary only, j moving
@@ -849,8 +1098,8 @@ class TwoBoundaryIntFPT(FirstPassage):
         for i in np.arange(0, self.K + 1):
             for j in np.arange(0, self.K + 1 - i):
                 idx = index_grow_moran(i, j)
-                if ((i == 0 and j == 0) or (i == 0 and j == self.K) or
-                        (i == self.K and j == 0)):
+                if ((i == 0 and j == 0) or (i == 0 and j == self.K)
+                        or (i == self.K and j == 0)):
                     (self.abs_idx).append(idx)
 
                 # 1 boundary only, j moving

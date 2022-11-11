@@ -3,7 +3,7 @@ import numpy as np
 from scipy import sparse
 from scipy.integrate import solve_bvp
 import scipy.sparse.linalg as sLA
-from scipy.special import expi
+# from scipy.special import expi
 
 
 class FirstPassage:
@@ -118,14 +118,14 @@ class FirstPassage:
             x_mesh = np.linspace(np.min(x), np.max(x), 5)
             r = 10**(-10)
             x_mesh = np.linspace(0+r, 1-r, 10)
-            #x_mesh = np.linspace(0, 1, 5)
+            # x_mesh = np.linspace(0, 1, 5)
 
         if N is None:
             N = self.K
 
         def fun(x, y):
-            return np.vstack((y[1], ((- 2 * N * self.A(x) * y[1] - 2 * N))
-                                     / self.B(x)))
+            return np.vstack((y[1], (((- 2 * N * self.A(x) * y[1] - 2 * N))
+                                     / self.B(x))))
 
         def bc(ya, yb):
             return np.array([ya[0], yb[0]])
@@ -137,14 +137,14 @@ class FirstPassage:
         return x, res.sol(x)[0]
 
     def FP_mfpt_x(self, x_find, N=None):
-        x_mesh = np.linspace(0, 1, 5)
+        x_mesh = np.linspace(0.001, 0.999, 5)
 
         if N is None:
             N = self.K
 
             def fun(x, y):
-                return np.vstack((y[1], ((-2 * N * self.A(x) * y[1] - 4 * N)
-                                         / self.B(x))))
+                return np.vstack((y[1], ((- 2 * N * self.A(x) * y[1]
+                                          - 2 * N) / self.B(x))))
 
             def bc(ya, yb):
                 return np.array([ya[0], yb[0]])
@@ -160,7 +160,7 @@ class FirstPassage:
             for i, n in enumerate(N):
                 def fun(x, y):
                     return np.vstack((y[1], (- 2 * n * self.A(x) * y[1]
-                                             - 4 * n) / self.B(x)))
+                                             - 2 * n) / self.B(x)))
 
                 def bc(ya, yb):
                     return np.array([ya[0], yb[0]])
@@ -181,7 +181,10 @@ class MoranFPT(FirstPassage):
         self.K = carrying_capacity
         self.times = times
         self.s = self.r1 / self.r2
-        self.xmax = 1. / 2.
+        if self.s >= 1:
+            self.xmax = 1. / (np.sqrt(self.s) + 1)
+        else:
+            self.xmax = 1. / (1 - np.sqrt(self.s))
         self.nmax = int(self.K * self.xmax)
 
         def index_moran(arg):
@@ -205,7 +208,7 @@ class MoranFPT(FirstPassage):
 
         # main matrix elements
         for i in np.arange(1, self.nbr_states - 1):
-            self.transition_mat[i - 1, i] = (self.r2 * i * (self.K - i) 
+            self.transition_mat[i - 1, i] = (self.r2 * i * (self.K - i)
                                              / (self.r2 * (self.K - i) +
                                                 self.r1 * i))
             self.transition_mat[i, i] = (- ((self.r2 + self.r1) * i *
@@ -213,7 +216,7 @@ class MoranFPT(FirstPassage):
                                                             (self.K - i) +
                                                             self.r1 * i))
                                          )
-            self.transition_mat[i + 1, i] = (self.r1 * i * (self.K - i) 
+            self.transition_mat[i + 1, i] = (self.r1 * i * (self.K - i)
                                              / (self.r2 * (self.K - i) +
                                                 self.r1 * i))
 
@@ -303,7 +306,10 @@ class Spatial(FirstPassage):
         self.K = carrying_capacity
         self.times = times
         self.s = growth_rate1 / growth_rate2
-        self.xmax = 1. / 2.
+        if self.s >= 1:
+            self.xmax = 1. / (np.sqrt(self.s) + 1)
+        else:
+            self.xmax = 1. / (1 - np.sqrt(self.s))
         self.nmax = int(self.K * self.xmax)
 
         def index(*args):
@@ -362,10 +368,16 @@ class Spatial(FirstPassage):
                 / (2 * (1 + x * (self.s - 1))))
 
     def potential(self, x):
-        # U = - integral ( 2 A(x) / B(x) )
-        return - 2 * self.K * (((self.s + 1) * (self.s - 1)
-                                - 2 * self.s * np.log((self.s - 1) * x + 1))
-                               / (self.s - 1)**2)
+        # U = - integral ( 2 * self.K * A(x) / B(x) )
+        # if self.s == 1.0:
+        #    return - np.log(2 * x ** 2 - 2 * x + 1) / 2
+        return - (2 * self.s * sp.log((self.s + 1.) * x ** 2 - 2. * x + 1.)
+                  - 2 * np.arctan(((self.s + 1) * x - 1.) / np.sqrt(self.s))
+                  * np.sqrt(self.s) * (self.s - 1.) + (self.s ** 2 - 1.) * x
+                  ) * 2 * self.K / (self.s + 1) ** 2
+        # return - 2 * self.K * (((self.s + 1) * (self.s - 1)
+        #                        - 2 * self.s * np.log((self.s - 1) * x + 1))
+        #                       / (self.s - 1)**2)
 
     def force(self, x):
         # U = - U' = 2 A(x) / B(x)

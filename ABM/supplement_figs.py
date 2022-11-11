@@ -80,7 +80,7 @@ def moranME_FP(times, filename, model):
         ax2.plot(X, FP_mfpt_moran, linestyle=linestyle[0], color=colors[i],
                  zorder=i)
         ax2.scatter(x, ME_mfpt_moran, color=colors[i], marker=marker,
-                    s=12, edgecolors='k', linewidth=1, zorder=i+.5)        
+                    s=12, edgecolors='k', linewidth=1, zorder=i+.5)
 
         # Fig 1 C
         # prob, mfpt = space[i].probability_mfpt(space[i].nmax)

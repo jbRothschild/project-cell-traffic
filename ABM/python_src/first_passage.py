@@ -3,6 +3,7 @@ import numpy as np
 from scipy import sparse
 from scipy.integrate import solve_bvp
 import scipy.sparse.linalg as sLA
+# import time
 # from scipy.special import expi
 
 
@@ -17,7 +18,6 @@ class FirstPassage:
         init_prob = np.zeros(self.nbr_states)
         init_state = self.index(*initialize)
         init_prob[init_state] = 1.0
-
         # calculation from Iyer-Biswas-Zilman Eq. 47
         prob_absorption = [-np.dot(((self.inverse).T @
                                     self.transition_mat[i, self.remove_abs].T
@@ -25,18 +25,39 @@ class FirstPassage:
                            init_prob[self.remove_abs]
                                    ) for i in self.abs_idx
                            ]
-
+        prob_abs = [prob * (prob > 0) for prob in prob_absorption]
         # calculation from Iyer-Biswas-Zilman Eq. 48
+        """
         mfpt = [0 if prob_absorption[i] == 0
-                else np.dot(((self.inverse @ self.inverse).T @
+                else np.dot(((self.inv_squ @
                              self.transition_mat[state, self.remove_abs].T
                              ).toarray().reshape(-1,),
                             init_prob[self.remove_abs]
                             ) / prob_absorption[i]
                 for i, state in enumerate(self.abs_idx)
                 ]
-
-        return prob_absorption, mfpt
+        """
+        mfpt = []
+        for i, state in enumerate(self.abs_idx):
+            if prob_absorption[i] == 0:
+                mfpt.append(0.0)
+            else:
+                A = self.inv_squ  # self.inverse @ self.inverse
+                B = self.transition_mat[state, self.remove_abs].T
+                C = (A @ B).T
+                D = C.dot((init_prob[self.remove_abs]))
+                mfpt.append((D / prob_absorption[i])[0])
+        """
+        mfpt = [0 if prob_absorption[i] == 0
+                else (((self.inv_squ @
+                        self.transition_mat[state, self.remove_abs].T
+                       ).T).dot((init_prob[self.remove_abs]))
+                       / prob_absorption[i]
+                for i, state in enumerate(self.abs_idx)
+                ]
+        """
+        # print('end')
+        return prob_abs, mfpt
 
     def fpt_distribution(self, *initialize):
         init_state = self.index(*initialize)
@@ -227,6 +248,7 @@ class MoranFPT(FirstPassage):
         # inverse and then make it sparse
         self.inverse = sp.linalg.inv(trunc_trans_mat)
         self.inverse = sparse.csc_matrix(self.inverse)
+        self.inv_squ = ((self.inverse).dot(self.inverse)).T
         self.transition_mat = sparse.csc_matrix(self.transition_mat)
 
         return
@@ -251,17 +273,6 @@ class MoranFPT(FirstPassage):
         if self.s == 1.:
             mfpt = - N * ((1 - x) * np.log(1 - x) + x * np.log(x)) / self.r1
             return x, mfpt
-        """
-        mfpt = - (np.exp(- 2 * N * (self.s * x - x + 1) / (self.s + 1))
-                  * (self.s * np.exp(2 * N * self.s / (self.s + 1))
-                     * expi(2 * N * (self.s - 1) * (x - 1) / (self.s + 1))
-                     - np.exp(2 * N * (1 - x) / (self.s + 1))
-                     * (np.exp(2 * N * x / (self.s + 1))
-                        * expi(2 * N * (self.s - 1) * x / (self.s + 1))
-                        + np.exp(2 * N * self.s * x / (self.s + 1))
-                        * (self.s * np.log(1 - x) - np.log(x))))
-                  ) / (self.s - 1)
-        """
         x, mfpt = super().FP_mfpt(x, N)
         return x, mfpt  # / 2
 
@@ -355,6 +366,7 @@ class Spatial(FirstPassage):
         # inverse and then make it sparse
         self.inverse = sp.linalg.inv(trunc_trans_mat)
         self.inverse = sparse.csc_matrix(self.inverse)
+        self.inv_squ = ((self.inverse).dot(self.inverse)).T
         self.transition_mat = sparse.csc_matrix(self.transition_mat)
 
         return
@@ -391,9 +403,10 @@ class Spatial(FirstPassage):
         return 1. / (4 * self.K)
 
 
-class TwoBoundaryFPT(FirstPassage):
+class SpatInv(FirstPassage):
 
     def __init__(self, growth_rate1, growth_rate2, carrying_capacity, times):
+        # 2 boundaries where cells are aligned as r2 - r1 - r2
         self.r1 = growth_rate1
         self.r2 = growth_rate2
         self.K = carrying_capacity
@@ -410,20 +423,11 @@ class TwoBoundaryFPT(FirstPassage):
         self.index = index_grow_moran
 
         # rates
-        def birth_single(i, r):
-            return r * i / 2.0
-
-        def death_single(i, r):
-            return r * (self.K - i) / 2.0
-
-        def both_left(i, j):
-            return self.r1 * j / 2.0
-
-        def both_right(i, j):
-            return self.r1 * i / 2.0
-
-        def one_boundary_move(i, j):
-            return self.r2 * (self.K - i - j) / 2.0
+        def birth(pos, r, i, j):
+            # r1 growth of i species
+            return (r * pos * (pos - 1) * self.K
+                    / (2 * (self.K - 1) * (self.r2 * (i + j)
+                                           + self.r1 * (self.K - i - j))))
 
         # given that i+j <= self.K, this is the total number of states allowed
         self.nbr_states = int((self.K + 1) * (self.K + 2) / 2)
@@ -436,17 +440,19 @@ class TwoBoundaryFPT(FirstPassage):
 
         # list of all absorbing states, gets filled below
         self.abs_idx = []
+        self.rmv_idx = []
 
         # Building transition matrix
         rxn_count = 0
         rate_out = 0.0
-        print_idx = self.nbr_states + 1
+        print_idx = 1E10  # self.index(2, 18)
         for i in np.arange(0, self.K + 1):
             for j in np.arange(0, self.K + 1 - i):
                 idx = index_grow_moran(i, j)
                 if ((i == 0 and j == 0) or (i == 0 and j == self.K)
                         or (i == self.K and j == 0)):
                     (self.abs_idx).append(idx)
+                    (self.rmv_idx).append(idx)
 
                 # 1 boundary only, j moving
                 if i == 0:
@@ -454,21 +460,25 @@ class TwoBoundaryFPT(FirstPassage):
                         birth_idx = index_grow_moran(i, j - 1)
                         row[rxn_count] = idx
                         col[rxn_count] = birth_idx
-                        data[rxn_count] = birth_single(j - 1, self.r1)
-                        rate_out += birth_single(j - 1, self.r1)
+                        data[rxn_count] = birth(j - 1, self.r2, i, j - 1)
+                        rate_out += birth(j - 1, self.r2, i, j - 1)
                         rxn_count += 1
                         if idx == print_idx:
-                            print("1", i, j - 1, birth_single(j - 1, self.r1))
+                            print("1", i, j - 1, birth(j - 1, self.r2, i,
+                                                       j - 1))
 
                     if j < self.K - 1:  # decrease j, don't change i = 0
                         death_idx = index_grow_moran(i, j + 1)
                         row[rxn_count] = idx
                         col[rxn_count] = death_idx
-                        data[rxn_count] = death_single(j + 1, self.r2)
-                        rate_out += death_single(j + 1, self.r2)
+                        data[rxn_count] = birth(self.K - (j + 1), self.r1, i,
+                                                (j + 1))
+                        rate_out += birth(self.K - (j + 1), self.r1, i,
+                                          (j + 1))
                         rxn_count += 1
                         if idx == print_idx:
-                            print("2", i, j + 1, death_single(j + 1, self.r2))
+                            print("2", i, j + 1, birth(self.K - (j + 1),
+                                                       self.r1, i, (j + 1)))
 
                 # 1 boundary only, i moving
                 if j == 0:
@@ -476,46 +486,51 @@ class TwoBoundaryFPT(FirstPassage):
                         birth_idx = index_grow_moran(i - 1, j)
                         row[rxn_count] = idx
                         col[rxn_count] = birth_idx
-                        data[rxn_count] = birth_single(i - 1, self.r2)
-                        rate_out += birth_single(i - 1, self.r2)
+                        data[rxn_count] = birth(i - 1, self.r1, i - 1, j)
+                        rate_out += birth(i - 1, self.r1, i - 1, j)
                         rxn_count += 1
                         if idx == print_idx:
-                            print("3", i - 1, j, birth_single(i - 1, self.r2))
+                            print("3", i - 1, j, birth(i - 1, self.r1,
+                                                       i - 1, j))
 
                     if i < self.K - 1:  # decrease i, don't change j = 0
                         death_idx = index_grow_moran(i + 1, j)
                         row[rxn_count] = idx
                         col[rxn_count] = death_idx
-                        data[rxn_count] = death_single(i + 1, self.r1)
-                        rate_out += death_single(i + 1, self.r1)
+                        data[rxn_count] = birth(self.K - (i + 1), self.r2,
+                                                i + 1, j)
+                        rate_out += birth(self.K - (i + 1), self.r2, i + 1, j)
                         rxn_count += 1
                         if idx == print_idx:
-                            print("4", i + 1, j, death_single(i + 1, self.r1))
+                            print("4", i + 1, j, birth(self.K - (i + 1),
+                                                       self.r2, i + 1, j))
 
                 # 2 boundaries moving
-
                 if i + j < self.K:
                     # both boundaries shift to the right
                     if i > 1:
                         shift_r_idx = index_grow_moran(i - 1, j + 1)
                         row[rxn_count] = idx
                         col[rxn_count] = shift_r_idx
-                        data[rxn_count] = both_right(i - 1, j + 1)
-                        rate_out += both_right(i - 1, j + 1)
+                        data[rxn_count] = birth(i - 1, self.r2, i - 1, j + 1)
+                        rate_out += birth(i - 1, self.r2, i - 1, j + 1)
                         rxn_count += 1
                         if idx == print_idx:
-                            print("5", i - 1, j + 1, both_right(i - 1, j + 1))
+                            print("5", i - 1, j + 1, birth(i - 1,
+                                                           self.r2, i - 1,
+                                                           j + 1))
 
                     # both boundaries shift to the left
                     if j > 1:
                         shift_l_idx = index_grow_moran(i + 1, j - 1)
                         row[rxn_count] = idx
                         col[rxn_count] = shift_l_idx
-                        data[rxn_count] = both_left(i + 1, j - 1)
-                        rate_out += both_left(i + 1, j - 1)
+                        data[rxn_count] = birth(j - 1, self.r2, i + 1, j - 1)
+                        rate_out += birth(j - 1, self.r2, i + 1, j - 1)
                         rxn_count += 1
                         if idx == print_idx:
-                            print("6", i + 1, j - 1, both_left(i + 1, j - 1))
+                            print("6", i + 1, j - 1, birth(j - 1, self.r2,
+                                                           i + 1, j - 1))
 
                 if i + j < self.K - 1:
                     # left boundary moves to the left
@@ -523,25 +538,37 @@ class TwoBoundaryFPT(FirstPassage):
                         grow_l_idx = index_grow_moran(i + 1, j)
                         row[rxn_count] = idx
                         col[rxn_count] = grow_l_idx
-                        data[rxn_count] = one_boundary_move(i + 1, j)
-                        rate_out += one_boundary_move(i + 1, j)
+                        data[rxn_count] = (birth(self.K - (i + 1), self.r1,
+                                                 i + 1, j)
+                                           - birth(j, self.r1, i + 1, j))
+                        rate_out += (birth(self.K - (i + 1), self.r1, i + 1, j)
+                                     - birth(j, self.r1, i + 1, j))
                         rxn_count += 1
                         if idx == print_idx:
-                            print("7", i + 1, j, one_boundary_move(i + 1, j))
+                            print("7", i + 1, j, (birth(self.K - (i + 1),
+                                                        self.r1, i + 1, j)
+                                                  - birth(j, self.r1, i + 1, j)
+                                                  ))
 
                     if j < self.K - 2 and i != 0:
                         # right boundary moves to the right
                         grow_r_idx = index_grow_moran(i, j + 1)
                         row[rxn_count] = idx
                         col[rxn_count] = grow_r_idx
-                        data[rxn_count] = one_boundary_move(i, j + 1)
-                        rate_out += one_boundary_move(i, j + 1)
+                        data[rxn_count] = (birth(self.K - (j + 1), self.r1,
+                                                 i, j + 1)
+                                           - birth(i, self.r1, i, j + 1))
+                        rate_out += (birth(self.K - (j + 1), self.r1, i, j + 1)
+                                     - birth(i, self.r1, i, j + 1))
                         rxn_count += 1
                         if idx == print_idx:
-                            print("8", i, j + 1, one_boundary_move(i, j + 1))
-
+                            print("8", i, j + 1, (birth(self.K - (j + 1),
+                                                        self.r1, i, j + 1)
+                                                  - birth(i, self.r1, i, j + 1)
+                                                  ))
                 if rate_out == 0.0:
-                    (self.abs_idx).append(idx)
+                    (self.rmv_idx).append(idx)
+                    # print(i, j)
 
                 rate_out = 0.0
 
@@ -564,202 +591,14 @@ class TwoBoundaryFPT(FirstPassage):
 
         # states that are absorbing
         self.remove_abs = np.ones(self.nbr_states, dtype=bool)
-        self.remove_abs[self.abs_idx] = False
+        self.remove_abs[self.rmv_idx] = False
 
         # remove rows/cols to make the matrix invertible
         trunc_trans_mat = (self.transition_mat[self.remove_abs]
                            )[:, self.remove_abs]
         self.inverse = sLA.inv(trunc_trans_mat)
-        print('--- done inverting ---')
-
-        return
-
-
-class TwoBoundaryIntFPT(FirstPassage):
-
-    def __init__(self, growth_rate1, growth_rate2, carrying_capacity, times):
-        self.r1 = growth_rate1
-        self.r2 = growth_rate2
-        self.K = carrying_capacity
-        self.times = times
-
-        def index_grow_moran(*args):
-            # for 2 state system, devised alternate scheme for indexing the
-            # states, such that i, j are represented by 1 number
-            return int(args[0] * (self.K + 2) - args[0] * (args[0] + 1) / 2
-                       + args[1])
-
-        # for external use outside of function, finding index of a 2 species
-        # state.
-        self.index = index_grow_moran
-
-        # rates
-        def birth_single(i, r):
-            return r * i * (i - 1) / (2 * (self.K - 1))
-
-        def death_single(i, r):
-            return r * (self.K - i) * (self.K - i - 1) / (2 * (self.K - 1))
-
-        def both_left(i, j):
-            return self.r1 * j * (j - 1) / (2 * (self.K - 1))
-
-        def both_right(i, j):
-            return self.r1 * i * (i - 1) / (2 * (self.K - 1))
-
-        def one_boundary_move(i, j):
-            return self.r2 * (self.K - i - j) / 2.0
-
-        def boundary_move_right(i, j):
-            return self.r2 * (self.K - i - j) / 2.0
-
-        def boundary_move_left(i, j):
-            return self.r2 * (self.K - i - j) / 2.0
-
-        # given that i+j <= self.K, this is the total number of states allowed
-        self.nbr_states = int((self.K + 1) * (self.K + 2) / 2)
-
-        # define vectors for constructing sparse transition matrix
-        # 5 reactions per state at most
-        row = np.zeros(5 * self.nbr_states, dtype=int)
-        col = np.zeros(5 * self.nbr_states, dtype=int)
-        data = np.zeros(5 * self.nbr_states, dtype=float)
-
-        # list of all absorbing states, gets filled below
-        self.abs_idx = []
-
-        # Building transition matrix
-        rxn_count = 0
-        rate_out = 0.0
-        print_idx = self.nbr_states + 1
-        for i in np.arange(0, self.K + 1):
-            for j in np.arange(0, self.K + 1 - i):
-                idx = index_grow_moran(i, j)
-                if ((i == 0 and j == 0) or (i == 0 and j == self.K)
-                        or (i == self.K and j == 0)):
-                    (self.abs_idx).append(idx)
-
-                # 1 boundary only, j moving
-                if i == 0:
-                    if j > 1:  # increase j, don't change i = 0
-                        birth_idx = index_grow_moran(i, j - 1)
-                        row[rxn_count] = idx
-                        col[rxn_count] = birth_idx
-                        data[rxn_count] = birth_single(j - 1, self.r1)
-                        rate_out += birth_single(j - 1, self.r1)
-                        rxn_count += 1
-                        if idx == print_idx:
-                            print("1", i, j - 1, birth_single(j - 1, self.r1))
-
-                    if j < self.K - 1:  # decrease j, don't change i = 0
-                        death_idx = index_grow_moran(i, j + 1)
-                        row[rxn_count] = idx
-                        col[rxn_count] = death_idx
-                        data[rxn_count] = death_single(j + 1, self.r2)
-                        rate_out += death_single(j + 1, self.r2)
-                        rxn_count += 1
-                        if idx == print_idx:
-                            print("2", i, j + 1, death_single(j + 1, self.r2))
-
-                # 1 boundary only, i moving
-                if j == 0:
-                    if i > 1:  # increase i, don't change j = 0
-                        birth_idx = index_grow_moran(i - 1, j)
-                        row[rxn_count] = idx
-                        col[rxn_count] = birth_idx
-                        data[rxn_count] = birth_single(i - 1, self.r2)
-                        rate_out += birth_single(i - 1, self.r2)
-                        rxn_count += 1
-                        if idx == print_idx:
-                            print("3", i - 1, j, birth_single(i - 1, self.r2))
-
-                    if i < self.K - 1:  # decrease i, don't change j = 0
-                        death_idx = index_grow_moran(i + 1, j)
-                        row[rxn_count] = idx
-                        col[rxn_count] = death_idx
-                        data[rxn_count] = death_single(i + 1, self.r1)
-                        rate_out += death_single(i + 1, self.r1)
-                        rxn_count += 1
-                        if idx == print_idx:
-                            print("4", i + 1, j, death_single(i + 1, self.r1))
-
-                # 2 boundaries moving
-
-                if i + j < self.K:
-                    # both boundaries shift to the right
-                    if i > 1:
-                        shift_r_idx = index_grow_moran(i - 1, j + 1)
-                        row[rxn_count] = idx
-                        col[rxn_count] = shift_r_idx
-                        data[rxn_count] = both_right(i - 1, j + 1)
-                        rate_out += both_right(i - 1, j + 1)
-                        rxn_count += 1
-                        if idx == print_idx:
-                            print("5", i - 1, j + 1, both_right(i - 1, j + 1))
-
-                    # both boundaries shift to the left
-                    if j > 1:
-                        shift_l_idx = index_grow_moran(i + 1, j - 1)
-                        row[rxn_count] = idx
-                        col[rxn_count] = shift_l_idx
-                        data[rxn_count] = both_left(i + 1, j - 1)
-                        rate_out += both_left(i + 1, j - 1)
-                        rxn_count += 1
-                        if idx == print_idx:
-                            print("6", i + 1, j - 1, both_left(i + 1, j - 1))
-
-                if i + j < self.K - 1:
-                    # left boundary moves to the left
-                    if i < self.K - 2 and j != 0:
-                        grow_l_idx = index_grow_moran(i + 1, j)
-                        row[rxn_count] = idx
-                        col[rxn_count] = grow_l_idx
-                        data[rxn_count] = one_boundary_move(i + 1, j)
-                        rate_out += one_boundary_move(i + 1, j)
-                        rxn_count += 1
-                        if idx == print_idx:
-                            print("7", i + 1, j, one_boundary_move(i + 1, j))
-
-                    if j < self.K - 2 and i != 0:
-                        # right boundary moves to the right
-                        grow_r_idx = index_grow_moran(i, j + 1)
-                        row[rxn_count] = idx
-                        col[rxn_count] = grow_r_idx
-                        data[rxn_count] = one_boundary_move(i, j + 1)
-                        rate_out += one_boundary_move(i, j + 1)
-                        rxn_count += 1
-                        if idx == print_idx:
-                            print("8", i, j + 1, one_boundary_move(i, j + 1))
-
-                if rate_out == 0.0:
-                    (self.abs_idx).append(idx)
-
-                rate_out = 0.0
-
-        temp_transition_mat = sparse.csc_matrix((data, (row, col)),
-                                                shape=(self.nbr_states,
-                                                       self.nbr_states)
-                                                )
-        # diagonal elements, leaving state
-        diagonal = (temp_transition_mat).sum(axis=0)
-        for i, diag in enumerate(np.asarray(diagonal)[0]):
-            row[rxn_count] = i
-            col[rxn_count] = i
-            data[rxn_count] = - diag
-            rxn_count += 1
-
-        self.transition_mat = sparse.csc_matrix((data, (row, col)),
-                                                shape=(self.nbr_states,
-                                                       self.nbr_states)
-                                                )
-
-        # states that are absorbing
-        self.remove_abs = np.ones(self.nbr_states, dtype=bool)
-        self.remove_abs[self.abs_idx] = False
-
-        # remove rows/cols to make the matrix invertible
-        trunc_trans_mat = (self.transition_mat[self.remove_abs]
-                           )[:, self.remove_abs]
-        self.inverse = sLA.inv(trunc_trans_mat)
+        self.inv_squ = (((self.inverse).toarray()).dot(
+            (self.inverse).toarray())).T
         print('--- done inverting ---')
 
         return

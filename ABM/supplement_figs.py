@@ -1,10 +1,11 @@
-from python_src.first_passage import MoranFPT, Spatial
+from python_src.first_passage import MoranFPT, Spatial, SpatInv
 import os
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 from matplotlib.lines import Line2D
+import scipy as sp
 
 plt.style.use('python_src/custom.mplstyle')
 
@@ -126,9 +127,98 @@ def moranME_FP(times, filename, model):
     return s
 
 
+def invasion_check(s, N, cmap_name, filename, model):
+    marker = 'o'
+    cmap = matplotlib.cm.get_cmap(cmap_name)
+    colors = [cmap(nbr) for nbr in np.linspace(0.0, 1.0, num=len(s))]
+    linestyle = [':', '-', '--']
+
+    # colour legend
+    col_label = s
+    col_lines = [Line2D([0], [0], color=col) for col in colors]
+
+    # Fig2A : P_absorbing
+    fig1, (ax1, ax2) = plt.subplots(nrows=2, sharex=True, figsize=(3.4, 5.0))
+    plt.subplots_adjust(wspace=0, hspace=0.0)
+    # fig1, ax1 = plt.subplots(figsize=(3.4, 2.5))
+    ax1.set(title=r"",
+            # xlabel=r"Initial species 1 fraction, $x$",
+            ylabel=r"Probability fixation, $P_N(x)$")
+
+    # Fig2B : MFPT function of x
+    # fig2, ax2 = plt.subplots(figsize=(3.4, 2.5))
+    ax2.set_xlim([0.0, 1.0])
+    ax2.set(title=r"",
+            xlabel=r"Initial species 1 fraction, $x$",
+            ylabel=r"MFPT, $\tau(x)$")
+
+    space = []
+    # ME_mfpt_space_N = []
+    for i, fit in enumerate(s):
+        # define models
+        space.append(model(fit, 1.0, N, times))
+
+        # plots
+        x = []
+        ME_mfpt_space = []
+        ME_prob_space = []
+
+        # Fig 1 A
+        # print(np.linspace(1, N - 1, 9))
+        for j in np.linspace(1, N - 1, 9):
+            x.append(j / N)
+            j = int(j)
+
+            # ME approach
+            ME_prob, ME_mfpt = space[i].probability_mfpt(0, space[i].K - j)
+            ME_prob_space.append(ME_prob[0])
+            ME_mfpt_space.append(np.dot(ME_prob, ME_mfpt))
+
+        ax1.scatter(x, ME_prob_space, color=colors[i], marker=marker,
+                    s=12, edgecolors='k', linewidth=1, zorder=i+.5)
+        ax2.scatter(x, ME_mfpt_space, color=colors[i], marker=marker,
+                    s=12, edgecolors='k', linewidth=1, zorder=i + .5)
+
+    # deterministic approximation times
+    x_det = np.linspace(0.2, 1.0, 100)
+    S = 100
+    t_det = - (np.log(np.abs((S - 1) * x_det**2 + 2 * x_det - 1)) - np.log(S))
+    det = ax2.plot(x_det, t_det, linestyle=linestyle[2], color='r', zorder=i+1)
+    x_det = np.linspace(0.0, 0.18, 100)
+    t_det2 = - (sp.log((S - 1) * x_det**2 + 2 * x_det - 1) - sp.log(-1))
+    ax2.plot(x_det, t_det2, linestyle=linestyle[2], color='r', zorder=i+1)
+
+    # figure limits and legends
+    # legend
+    legend = ['spatial (ME)', 'spatial (FP)', 'moran (FP)']
+    custom_lines = [
+        Line2D([0], [0], markerfacecolor='dimgray', linestyle='None',
+               marker=marker, color='k', linewidth=1),
+        Line2D([0], [0], color='dimgray', linestyle=linestyle[1]),
+        Line2D([0], [0], color='k', linestyle=linestyle[0])
+        ]
+
+    # limits
+    ax1.set_xlim([0.00, 1.0])
+    ax1.set_ylim([0.00, 1.0])
+    cl = ax1.legend(col_lines, col_label, loc='lower right', title=r'$s$')
+    ax1.legend(custom_lines, legend, title=r'Model', loc='upper right',
+               framealpha=0.8)
+    ax1.add_artist(cl)
+
+    ax2.set_yscale('log')
+    ax2.set_ylim(0.1, 100)
+    ax2.legend(det, [r'$\tau_{\mathrm{det}}$'])
+
+    # save figures
+    fig1.savefig(filename + '_prob.pdf')
+    fig1.savefig(filename + '_prob.png')
+    return 0
+
+
 if __name__ == '__main__':
     # mkdir
-    dir = 'figures_theory'
+    dir = 'figures_suppl'
     Path(dir).mkdir(parents=True, exist_ok=True)
 
     # for certain distribution functions
@@ -136,7 +226,17 @@ if __name__ == '__main__':
 
     # theory parameters
     model = Spatial
+    model2 = SpatInv
+
+    # colormaps
+    cmap_name1 = 'plasma'
 
     # Figure S1 : ME vs FP moran model
-    fname = dir + os.sep + 'moran'
-    moranME_FP(times, fname, MoranFPT)
+    fname1 = dir + os.sep + 'moran'
+    moranME_FP(times, fname1, MoranFPT)
+
+    # Figure SX : invasion model check
+    s = [1., 10., 100.]
+    K = 100
+    fnameX = dir + os.sep + 'inv_check'
+    invasion_check(s, K, cmap_name1, fnameX, SpatInv)

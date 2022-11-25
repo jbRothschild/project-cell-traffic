@@ -13,7 +13,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 def spatial_vs_moran(N, times, cmap_name, filename, model):
     r1 = 1.0
     r2 = 1.0
-    marker = 'o'
+    # marker = 'o'
     cmap = matplotlib.cm.get_cmap(cmap_name)
     colors = [cmap(nbr) for nbr in np.linspace(0.0, 0.8, num=len(N))]
     linestyle = [':', '-', '--']
@@ -30,7 +30,7 @@ def spatial_vs_moran(N, times, cmap_name, filename, model):
     ax1.set(title=r"",
             # xlabel=r"Relative abundance, $x$",
             ylabel=r"Probability fixation, $P_N(x)$")
-
+    """
     legend = ['spatial (ME)', 'spatial (FP)', 'moran (FP)']
     custom_lines = [
         Line2D([0], [0], markerfacecolor='dimgray', linestyle='None',
@@ -38,7 +38,7 @@ def spatial_vs_moran(N, times, cmap_name, filename, model):
         Line2D([0], [0], color='dimgray', linestyle=linestyle[1]),
         Line2D([0], [0], color='k', linestyle=linestyle[0])
         ]
-
+    """
     # Fig1B : MFPT function of x
     # fig2, ax2 = plt.subplots(figsize=(3.4, 2.5))
     ax2.set(title=r"",
@@ -117,7 +117,8 @@ def spatial_vs_moran(N, times, cmap_name, filename, model):
     ax2.plot(x_det, t_det, linestyle=linestyle[2], color='k', zorder=i+1)
     x_det = np.linspace(0.0, 0.50, 1000)
     t_det = - np.log(-2 * x_det + 1.0)
-    det = ax2.plot(x_det, t_det, linestyle=linestyle[2], color='k', zorder=i+1)
+    # det=ax2.plot(x_det, t_det, linestyle=linestyle[2], color='k', zorder=i+1)
+    ax2.plot(x_det, t_det, linestyle=linestyle[2], color='k', zorder=i+1)
 
     # Fig 1C: MFPT as a function of N at x_max
     N_func = np.linspace(10, N[-1], 100)
@@ -356,13 +357,13 @@ def asymptotics(s, cmap_name, filename, model):
     # Fig3B : x_t as a function of N
     # fig2, ax2 = plt.subplots(figsize=(3.4, 2.5))
     ax2.set(title=r"",
-            xlabel=r"$x$",
-            ylabel=r"$N$")
+            xlabel=r"Relative abundance, $x$",
+            ylabel=r"Total population size, $N$")
 
     # Fig3C : MFPT asymptotic function of N
     fig3, ax3 = plt.subplots(figsize=(3.4, 2.5))
     ax3.set(title=r"",
-            xlabel=r"$N$",
+            xlabel=r"Total population size, $N$",
             ylabel=r"MFPT")
 
     space = []
@@ -452,8 +453,9 @@ def asymptotics(s, cmap_name, filename, model):
 
 
 def invasion(s, N, cmap_name, filename, model):
-    marker = ['o', 'X']
+    marker = ['+', 'x']
     linestyle = [':', '-', '--']
+    markeredge = None
     ms = 5
     cmap = matplotlib.cm.get_cmap(cmap_name)
     colors = [cmap(nbr) for nbr in np.linspace(0.0, 0.8, num=len(s))]
@@ -467,24 +469,31 @@ def invasion(s, N, cmap_name, filename, model):
     plt.subplots_adjust(wspace=0, hspace=0.0)
     fig1, ax1 = plt.subplots(figsize=(3.4, 2.5))
     ax1.set(title=r"",
-            xlabel=r"$N$",
-            ylabel=r"Prob. successful invasion")
+            xlabel=r"Total population size, $N$",
+            ylabel=r"Probability invasion succeeds")
 
     # Fig4B : MFPT function of x
     fig2, ax2 = plt.subplots(figsize=(3.4, 2.5))
     ax2.set(title=r"",
-            xlabel=r"$N$",
-            ylabel=r"MFPT success")
+            xlabel=r"Total population size, $N$",
+            ylabel=r"MFPT successful invasion")
 
     fig3, ax3 = plt.subplots(figsize=(3.4, 2.5))
     ax3.set(title=r"",
-            xlabel=r"$N$",
+            xlabel=r"Total population size, $N$",
             ylabel=r"MFPT failure")
+
+    fig4, ax4 = plt.subplots(figsize=(3.4, 2.5))
+    ax4.set(title=r"",
+            xlabel=r"Relative abundance, $x$",
+            ylabel=r"Probability invasion fixates")
 
     moran = [[] for fit in s]
     space = [[] for fit in s]
-
+    
+    Nplot = 100
     for i, fit in enumerate(s):
+        prob_loc = np.zeros(Nplot)
         # Fig 4 calcs
         ME_prob_moran = []
         ME_prob_space = []
@@ -508,6 +517,8 @@ def invasion(s, N, cmap_name, filename, model):
             prob_tot = np.array([0., 0., 0.])
             for pos in range(K):
                 prob, mfpt = space[i][j].probability_mfpt(pos, K - (pos + 1))
+                if K == Nplot:
+                    prob_loc[pos] = prob[0]
                 prob_tot += np.array(prob) / K
                 mfpt_tot += np.array(prob) * np.array(mfpt) / K
             ME_prob_space.append(prob_tot[0])
@@ -515,33 +526,38 @@ def invasion(s, N, cmap_name, filename, model):
             ME_fptF_space.append(mfpt_tot[1] + mfpt_tot[2])
 
         ax1.plot(N, ME_prob_moran, color=colors[i], marker=marker[0],
-                 markersize=ms, markeredgecolor='k', linewidth=1,
+                 markersize=ms + 1, markeredgecolor=markeredge, linewidth=1,
                  linestyle=linestyle[0], zorder=i + .5)
         ax1.plot(N, ME_prob_space, color=colors[i], marker=marker[1],
-                 markersize=ms, markeredgecolor='k', linewidth=1,
+                 markersize=ms, markeredgecolor=markeredge, linewidth=1,
                  linestyle=linestyle[1], zorder=i + .5)
         ax2.plot(N, ME_fptS_moran, color=colors[i], marker=marker[0],
-                 markersize=ms, markeredgecolor='k', linewidth=1,
+                 markersize=ms + 1, markeredgecolor=markeredge, linewidth=1,
                  linestyle=linestyle[0], zorder=i + .5)
         ax2.plot(N, ME_fptS_space, color=colors[i], marker=marker[1],
-                 markersize=ms, markeredgecolor='k', linewidth=1,
+                 markersize=ms, markeredgecolor=markeredge, linewidth=1,
                  linestyle=linestyle[1], zorder=i + .5)
         ax3.plot(N, ME_fptF_moran, color=colors[i], marker=marker[0],
-                 markersize=ms, markeredgecolor='k', linewidth=1,
+                 markersize=ms + 1, markeredgecolor=markeredge, linewidth=1,
                  linestyle=linestyle[0], zorder=i + .5)
         ax3.plot(N, ME_fptF_space, color=colors[i], marker=marker[1],
-                 markersize=ms, markeredgecolor='k', linewidth=1,
+                 markersize=ms, markeredgecolor=markeredge, linewidth=1,
                  linestyle=linestyle[1], zorder=i + .5)
+        ax4.plot((np.arange(Nplot) + 0.5) / Nplot, prob_loc, color=colors[i],
+                 marker=marker[1], markersize=ms, markeredgecolor=markeredge,
+                 linewidth=1, linestyle=linestyle[1], zorder=i + .5)
 
     # figure limits and legends
     # legend
-    legend = ['moran (ME)', 'spatial (ME)']
+    # legend = ['moran (ME)', 'spatial (ME)']
+    """
     custom_lines = [
         Line2D([0], [0], markerfacecolor='dimgray', marker=marker[0],
                color='k', linewidth=1),
         Line2D([0], [0], markerfacecolor='dimgray', marker=marker[1],
                color='k', linewidth=1)
         ]
+    """
 
     # limits
     ax1.set_xlim([np.min(N), np.max(N)])
@@ -567,13 +583,22 @@ def invasion(s, N, cmap_name, filename, model):
     ax3.set_xscale('log')
     ax3.xaxis.set_minor_formatter(NullFormatter())
 
+    # ax4.set_yscale('log')
+    ax4.set_xlim([0.0, 1.0])
+    ax4.set_ylim([0.0001, 1.0])
+    ax4.set_yscale('log')
+    # ax4.set_xscale('log')
+    # ax4.xaxis.set_minor_formatter(NullFormatter())
+
     # save figures
     fig1.savefig(filename + '_prob.pdf')
     fig1.savefig(filename + '_prob.png')
     fig2.savefig(filename + '_mfptS.pdf')
     fig2.savefig(filename + '_mfptS.png')
-    fig3.savefig(filename + '_mfptF.pdf')
-    fig3.savefig(filename + '_mfptF.png')
+    # fig3.savefig(filename + '_mfptF.pdf')
+    # fig3.savefig(filename + '_mfptF.png')
+    fig4.savefig(filename + '_probloc.pdf')
+    fig4.savefig(filename + '_probloc.png')
     return 0
 
 
@@ -591,14 +616,14 @@ if __name__ == '__main__':
     N = [10, 100, 1000]
     fname1 = dir + os.sep + 'SvM'
     cmap_name = 'viridis'
-    # spatial_vs_moran(N, times, cmap_name, fname1, Spatial)
+    spatial_vs_moran(N, times, cmap_name, fname1, Spatial)
 
     # Figure 2 : fitness results
     s = [1., 10., 100.]
     K = 100
     fname2 = dir + os.sep + 'fit'
     cmap_name1 = 'plasma'
-    # fitness_spatial(s, K, times, cmap_name1, fname2, Spatial)
+    fitness_spatial(s, K, times, cmap_name1, fname2, Spatial)
 
     # Figure 3 : asymptotics
     s = [1., 10., 100.]
@@ -607,7 +632,8 @@ if __name__ == '__main__':
     asymptotics(s, cmap_name1, fname3, Spatial)
 
     # Figure 4 : Invasion
-    s = [1., 10., 100.]
+    s = [1., 10, 100.]
+    N = np.logspace(np.log10(11), np.log10(101), 10, dtype=int)
     N = np.logspace(1, 2, 10, dtype=int)
     fname4 = dir + os.sep + 'inv'
-    # invasion(s, N, cmap_name1, fname4, SpatInv)
+    invasion(s, N, cmap_name1, fname4, SpatInv)

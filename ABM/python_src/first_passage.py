@@ -415,8 +415,11 @@ class SpatInv(FirstPassage):
         def index_grow_moran(*args):
             # for 2 state system, devised alternate scheme for indexing the
             # states, such that i, j are represented by 1 number
-            return int(args[0] * (self.K + 2) - args[0] * (args[0] + 1) / 2
-                       + args[1])
+            a = args[0]
+            b = args[1]
+            return int((a + b) * (a + b + 1) / 2 + a)
+            # return int(args[0] * (self.K + 2) - args[0] * (args[0] + 1) / 2
+            #           + args[1])
 
         # for external use outside of function, finding index of a 2 species
         # state.
@@ -486,20 +489,20 @@ class SpatInv(FirstPassage):
                         birth_idx = index_grow_moran(i - 1, j)
                         row[rxn_count] = idx
                         col[rxn_count] = birth_idx
-                        data[rxn_count] = birth(i - 1, self.r1, i - 1, j)
+                        data[rxn_count] = birth(i - 1, self.r2, i - 1, j)
                         rate_out += birth(i - 1, self.r1, i - 1, j)
                         rxn_count += 1
                         if idx == print_idx:
-                            print("3", i - 1, j, birth(i - 1, self.r1,
+                            print("3", i - 1, j, birth(i - 1, self.r2,
                                                        i - 1, j))
 
                     if i < self.K - 1:  # decrease i, don't change j = 0
                         death_idx = index_grow_moran(i + 1, j)
                         row[rxn_count] = idx
                         col[rxn_count] = death_idx
-                        data[rxn_count] = birth(self.K - (i + 1), self.r2,
+                        data[rxn_count] = birth(self.K - (i + 1), self.r1,
                                                 i + 1, j)
-                        rate_out += birth(self.K - (i + 1), self.r2, i + 1, j)
+                        rate_out += birth(self.K - (i + 1), self.r1, i + 1, j)
                         rxn_count += 1
                         if idx == print_idx:
                             print("4", i + 1, j, birth(self.K - (i + 1),
@@ -532,9 +535,9 @@ class SpatInv(FirstPassage):
                             print("6", i + 1, j - 1, birth(j - 1, self.r2,
                                                            i + 1, j - 1))
 
-                if i + j < self.K - 1:
+                if i + j < self.K:
                     # left boundary moves to the left
-                    if i < self.K - 2 and j != 0:
+                    if i < self.K - 1 and j != 0:
                         grow_l_idx = index_grow_moran(i + 1, j)
                         row[rxn_count] = idx
                         col[rxn_count] = grow_l_idx
@@ -550,7 +553,7 @@ class SpatInv(FirstPassage):
                                                   - birth(j, self.r1, i + 1, j)
                                                   ))
 
-                    if j < self.K - 2 and i != 0:
+                    if j < self.K - 1 and i != 0:
                         # right boundary moves to the right
                         grow_r_idx = index_grow_moran(i, j + 1)
                         row[rxn_count] = idx
@@ -566,6 +569,7 @@ class SpatInv(FirstPassage):
                                                         self.r1, i, j + 1)
                                                   - birth(i, self.r1, i, j + 1)
                                                   ))
+
                 if rate_out == 0.0:
                     (self.rmv_idx).append(idx)
                     # print(i, j)
